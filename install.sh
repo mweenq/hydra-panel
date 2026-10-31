@@ -1,21 +1,34 @@
 #!/usr/bin/env bash
 # Hydra Panel — установщик.
-# Использование:  bash install.sh [--domain example.com] [--email a@b.c] [--ip] [--yes]
+#
+# Одна команда (код скачается с GitHub):
+#   curl -fsSL https://raw.githubusercontent.com/mweenq/hydra-panel/refs/heads/main/install.sh | sudo bash
+#
+# Из клона репозитория:
+#   git clone https://github.com/mweenq/hydra-panel.git && cd hydra-panel && sudo bash install.sh
+#
+# Флаги: --domain example.com --email a@b.c --ip --yes --password *** --no-node
 set -euo pipefail
 
 # Log all output to file with timestamps
 log_file="/var/log/hydra-install.log"
-exec > >(tee -a "$log_file") 2>&1
+if [ "$(id -u)" = "0" ]; then
+  exec > >(tee -a "$log_file") 2>&1
+fi
 
 HYDRA_DIR="/opt/hydra"
 APP_DIR="$HYDRA_DIR/app"
 VENV="$HYDRA_DIR/venv"
-if [ -z "${BASH_SOURCE[0]:-}" ]; then
-  printf 'Установщик нужно запускать файлом: sudo bash install.sh
-' >&2
-  exit 1
+# Код берём из каталога установщика, если он рядом; иначе — с GitHub.
+REPO="mweenq/hydra-panel"
+BRANCH="${HYDRA_BRANCH:-main}"
+SRC_DIR=""
+FETCH_ONLY=0
+FETCH_TMP=""
+if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+  _dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  if [ -d "$_dir/hydra" ]; then SRC_DIR="$_dir"; fi
 fi
-SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOMAIN=""
 EMAIL=""
 IP_MODE=0
@@ -107,6 +120,52 @@ get_external_ip() {
   echo ""
 }
 
+usage() {
+  cat <<'USAGE'
+Hydra Panel — установщик.
+
+  curl -fsSL https://raw.githubusercontent.com/mweenq/hydra-panel/refs/heads/main/install.sh | sudo bash
+  sudo bash install.sh
+
+Флаги:
+  --domain example.com   домен панели (Let's Encrypt)
+  --email a@b.c          e-mail для ACME
+  --ip                   режим IP с самоподписанным сертификатом
+  --yes, -y              без вопросов, значения по умолчанию
+  --password ***         пароль админа
+  --no-node              не ставить ноду на этот же сервер
+  --docker               поставить ноду в docker
+USAGE
+}
+
+# Скачивает код с GitHub, если установщик запущен не из каталога с исходниками.
+ensure_src() {
+  if [ -n "$SRC_DIR" ] && [ -d "$SRC_DIR/hydra" ]; then
+    info "Исходники рядом: $SRC_DIR"
+    return 0
+  fi
+  TOTAL=$((TOTAL + 1))   # загрузка — тоже шаг
+  step "Загрузка кода с GitHub"
+  FETCH_TMP="$(mktemp -d)"
+  trap 'rm -rf "${FETCH_TMP:-}"' EXIT
+  local url="https://codeload.github.com/$REPO/tar.gz/refs/heads/$BRANCH"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL --retry 3 --connect-timeout 15 "$url" -o "$FETCH_TMP/src.tar.gz" \
+      || die "не удалось скачать $url"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q -O "$FETCH_TMP/src.tar.gz" "$url" || die "не удалось скачать $url"
+  else
+    die "нет ни curl, ни wget — поставьте один из них и повторите"
+  fi
+  # распаковываем изнутри каталога: так tar не спотыкается о пути с «C:» в msys
+  ( cd "$FETCH_TMP" && tar -xzf src.tar.gz ) || die "архив не распаковался"
+  local _root
+  _root="$( cd "$FETCH_TMP" && ls -d */ | head -n1 )" || die "архив пустой"
+  SRC_DIR="$FETCH_TMP/${_root%/}"
+  [ -d "$SRC_DIR/hydra" ] || die "в архиве нет каталога hydra"
+  ok "Код скачан: $SRC_DIR"
+}
+
 # ------------------------------------------------------------------ аргументы
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -117,12 +176,20 @@ while [ $# -gt 0 ]; do
     --no-node) WITH_NODE=0; shift ;;
     --password) ADMIN_PASS="$2"; shift 2 ;;
     --docker) DOCKER=1; shift ;;
-    -h|--help) sed -n '2,4p' "$0"; exit 0 ;;
+    --fetch-only) FETCH_ONLY=1; shift ;;
+    -h|--help) usage; exit 0 ;;
     *) die "неизвестный аргумент: $1" ;;
   esac
 done
 
 banner
+
+# только скачать код и показать путь — проверка связи с GitHub
+if [ "$FETCH_ONLY" = "1" ]; then
+  ensure_src
+  echo "SRC_DIR=$SRC_DIR"
+  exit 0
+fi
 
 # ------------------------------------------------------------------ 1. система
 step "Проверка системы"
@@ -217,6 +284,7 @@ fi
 ok "Логин: admin"
 
 # ------------------------------------------------------------------ 4. файлы
+ensure_src
 step "Установка панели"
 FRESH_DB=1
 [ -f "$HYDRA_DIR/data/hydra.db" ] && FRESH_DB=0

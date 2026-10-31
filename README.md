@@ -84,15 +84,19 @@ Happ, v2RayTun и Streisand показывают остаток трафика �
 
 ## Установка панели
 
+Одной командой — установщик сам скачает код с GitHub:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mweenq/hydra-panel/refs/heads/main/install.sh | sudo bash
+```
+
+Или из клона (удобно, если хотите править код на месте):
+
 ```bash
 git clone https://github.com/mweenq/hydra-panel.git
 cd hydra-panel
 sudo bash install.sh
 ```
-
-Установщик копирует код из своего каталога, поэтому запускать его нужно файлом
-из клона (`curl … | bash` не поддерживается). Дальше — вопросы про домен/IP,
-e-mail и пароль админа.
 
 Установщик спрашивает: домен или IP, e-mail для Let's Encrypt, пароль админа и нужно ли
 поставить ноду на этот же сервер. Дальше сам ставит Python/nginx/acme.sh, выпускает
@@ -104,6 +108,12 @@ e-mail и пароль админа.
 ```bash
 sudo bash install.sh --domain vpn.example.com --email admin@example.com --yes
 sudo bash install.sh --ip --yes          # самоподписанный сертификат
+```
+
+Проверить только доступность GitHub и распаковку (ничего не ставит):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mweenq/hydra-panel/refs/heads/main/install.sh | sudo bash -s -- --fetch-only
 ```
 
 После установки: `https://<домен>/dashboard`, логин `admin`, пароль — в выводе
