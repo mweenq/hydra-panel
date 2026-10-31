@@ -20,7 +20,7 @@ HYDRA_DIR="/opt/hydra"
 APP_DIR="$HYDRA_DIR/app"
 VENV="$HYDRA_DIR/venv"
 # Код берём из каталога установщика, если он рядом; иначе — с GitHub.
-REPO="mweenq/hydra-panel"
+REPO="${HYDRA_REPO:-mweenq/hydra-panel}"   # можно переопределить зеркалом
 BRANCH="${HYDRA_BRANCH:-main}"
 SRC_DIR=""
 FETCH_ONLY=0
