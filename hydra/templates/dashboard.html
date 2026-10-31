@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Обзор{% endblock %}
+{% block h1 %}Обзор{% endblock %}
+{% block sub %}Трафик, пользователи и состояние нод{% endblock %}
+{% block actions %}
+  <a class="btn" href="/nodes">Ноды</a>
+  <a class="btn primary" href="/users">Пользователи</a>
+{% endblock %}
+
+{% block content %}
+<div class="grid c4 mb16">
+  <div class="card metric">
+    <div class="k">Пользователи</div>
+    <div class="v">{{ stats.active }}<span class="faint" style="font-size:15px;font-weight:500"> / {{ stats.clients }}</span></div>
+    <div class="d">активных / всего</div>
+  </div>
+  <div class="card metric">
+    <div class="k">Трафик всего</div>
+    <div class="v">{{ stats.total_h }}</div>
+    <div class="d">↑ {{ stats.up|bytes }} · ↓ {{ stats.down|bytes }}</div>
+  </div>
+  <div class="card metric">
+    <div class="k">Ноды</div>
+    <div class="v">{{ nodes|selectattr('status', 'equalto', 'online')|list|length }}<span class="faint" style="font-size:15px;font-weight:500"> / {{ nodes|length }}</span></div>
+    <div class="d">онлайн / всего</div>
+  </div>
+  <div class="card metric">
+    <div class="k">Подключения</div>
+    <div class="v">{{ active_connections }}<span class="faint" style="font-size:15px;font-weight:500"> / {{ connections }}</span></div>
+    <div class="d">включено / всего</div>
+  </div>
+</div>
+
+<div class="grid split">
+  <div class="stack">
+    <div class="card">
+      <div class="card-h">
+        <div class="row" style="gap:14px">
+          <h2>Трафик</h2>
+          <span class="small muted">{{ data.title }}</span>
+        </div>
+        <div class="tabs">
+          <a href="/dashboard?period=day" class="{{ 'on' if data.period == 'day' }}">День</a>
+          <a href="/dashboard?period=month" class="{{ 'on' if data.period == 'month' }}">Месяц</a>
+          <a href="/dashboard?period=year" class="{{ 'on' if data.period == 'year' }}">Год</a>
+        </div>
+      </div>
+      <div class="card-b">
+        <div class="spread" style="align-items:flex-end;margin-bottom:14px">
+          <div>
+            <div class="num" style="font-size:24px;font-weight:600;letter-spacing:-.03em">{{ data.total_h }}</div>
+            <div class="small muted">
+              {{ data.prev_title }}: {{ data.prev_total_h }}
+              {% if data.delta is not none %}
+                · <span class="{{ 'amber' if data.delta > 0 else '' }}"
+                        style="{{ 'color:var(--warn)' if data.delta > 0 else '' }}">{{ '+' if data.delta > 0 }}{{ data.delta }}%</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="small muted right">пик {{ data.peak_h }}<br>за точку</div>
+        </div>
+
+        <div class="chart">
+          <svg viewBox="0 0 640 170" preserveAspectRatio="none" aria-hidden="true">
+            {% for y in [42, 84, 126] %}
+            <line class="grid-line" x1="0" y1="{{ y }}" x2="640" y2="{{ y }}"
+                  stroke-dasharray="2 4"/>
+            {% endfor %}
+            <path class="area" d="{{ graph.area }}"/>
+            <path class="line" d="{{ graph.line }}" vector-effect="non-scaling-stroke"/>
+          </svg>
+        </div>
+        <div class="chart-x">
+          <span>{{ data.points[0].label }}</span>
+          <span>{{ data.points[data.points|length // 2].label }}</span>
+          <span>{{ data.points[-1].label }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Топ по трафику</h2><a class="small link" href="/users">все пользователи</a></div>
+      {% if top %}
+      <table class="tbl">
+        <tbody>
+        {% for u in top %}
+          <tr>
+            <td class="name">{{ u.name }}</td>
+            <td class="right num muted">{{ u.used_h }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">Пока нет пользователей с трафиком.</div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Журнал</h2></div>
+      {% if audit %}
+      <table class="tbl">
+        <tbody>
+        {% for a in audit %}
+          <tr>
+            <td><span class="mono">{{ a.action }}</span></td>
+            <td class="muted small">{{ a.target }}</td>
+            <td class="right faint small nowrap">{{ a.ts[5:16].replace('T', ' ') }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">Событий ещё нет.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-h"><h2>Ноды</h2><a class="small link" href="/nodes">управление</a></div>
+      {% if nodes %}
+      <table class="tbl">
+        <tbody>
+        {% for n in nodes %}
+          <tr>
+            <td>
+              <a class="name" href="/nodes/{{ n.id }}">{{ n.name }}</a>
+              <div class="sub mono">{{ n.public_host or n.address }} · {{ n.connections }} подкл.</div>
+            </td>
+            <td class="right">
+              {% if n.status == 'online' %}<span class="badge ok"><i class="dot"></i>онлайн</span>
+              {% elif n.status == 'pending' %}<span class="badge warn"><i class="dot"></i>ждёт</span>
+              {% else %}<span class="badge bad"><i class="dot"></i>{{ 'ошибка' if n.status == 'error' else 'офлайн' }}</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">
+        <div class="big">Нод ещё нет</div>
+        <div>Добавьте первую — панель выдаст команду установки.</div>
+        <a class="btn primary sm mt16" href="/nodes">Добавить ноду</a>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Быстрые действия</h2></div>
+      <div class="card-b stack" style="gap:8px">
+        <a class="btn wide" href="/users">Создать пользователя</a>
+        <a class="btn wide" href="/nodes">Добавить ноду</a>
+        <a class="btn wide" href="/subscription">Настройки подписки</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Подписка</h2></div>
+      <div class="card-b">
+        <div class="small muted">Публичный адрес</div>
+        <div class="mono mt8">{{ settings().panel_url or 'не задан' }}</div>
+        <div class="small muted mt16">Ссылка пользователя</div>
+        <div class="mono mt8">{{ (settings().panel_url or '') ~ '/sub/<токен>' }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

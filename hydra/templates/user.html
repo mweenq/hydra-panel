@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}{{ c.name }}{% endblock %}
+{% block h1 %}{{ c.name }}{% endblock %}
+{% block sub %}
+  {% if c.status == 'active' %}<span class="badge ok"><i class="dot"></i>активен</span>
+  {% elif c.status == 'disabled' %}<span class="badge"><i class="dot"></i>выключен</span>
+  {% elif c.status == 'expired' %}<span class="badge bad"><i class="dot"></i>истёк</span>
+  {% else %}<span class="badge warn"><i class="dot"></i>лимит исчерпан</span>{% endif %}
+  <span class="faint" style="margin-left:8px">создан {{ c.created_at[:10] }}</span>
+{% endblock %}
+{% block actions %}
+  <a class="btn" href="/users">К списку</a>
+{% endblock %}
+
+{% block content %}
+<div class="grid split">
+  <div class="stack">
+    <div class="card">
+      <div class="card-h">
+        <h2>Подписка</h2>
+        <div class="row" style="gap:4px">
+          <a class="btn sm" href="{{ sub_url }}" target="_blank" rel="noopener">Открыть</a>
+          <button class="btn sm" data-copy="#sub-url">Копировать</button>
+        </div>
+      </div>
+      <div class="card-b">
+        <div class="code" id="sub-url">{{ sub_url }}</div>
+        <div class="row wrap mt16" style="gap:6px">
+          <span class="small muted" style="margin-right:4px">Форматы:</span>
+          <a class="tag" href="{{ sub_url }}/v2ray">v2ray</a>
+          <a class="tag" href="{{ sub_url }}/clash">clash</a>
+          <a class="tag" href="{{ sub_url }}/singbox">sing-box</a>
+          <a class="tag" href="{{ sub_url }}/links">plain</a>
+        </div>
+        <div class="small faint mt8">Формат выбирается по приложению клиента — настраивается в разделе «Подписка».</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Ссылки</h2><span class="small">{{ links|length }}</span></div>
+      {% if links %}
+      <table class="tbl">
+        <thead><tr><th>Подключение</th><th>Протокол</th><th></th></tr></thead>
+        <tbody>
+        {% for l in links %}
+          <tr>
+            <td>
+              <div class="name">{{ l.inbound.remark or l.inbound.tag }}</div>
+              <div class="sub mono">{{ l.inbound.node_address }}:{{ l.inbound.port }}</div>
+            </td>
+            <td>
+              <span class="tag">{{ l.inbound.protocol }}</span>
+              {% if l.inbound.network %}<span class="tag">{{ l.inbound.network }}</span>{% endif %}
+              {% if l.inbound.security %}<span class="tag">{{ l.inbound.security }}</span>{% endif %}
+            </td>
+            <td class="right">
+              <button class="btn sm" data-copy data-text="{{ l.link }}">Копировать</button>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">Пользователь не привязан ни к одному подключению.</div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-h">
+        <h2>Устройства</h2>
+        <span class="small muted">
+          {{ dev.count }}{% if dev.limit %} из {{ dev.limit }}{% else %} · без лимита{% endif %}
+        </span>
+      </div>
+      {% if devices %}
+      <table class="tbl">
+        <thead><tr><th>Устройство</th><th>HWID</th><th>Последний раз</th><th></th></tr></thead>
+        <tbody>
+        {% for d in devices %}
+          <tr>
+            <td>
+              <div class="name">{{ d.title }}</div>
+              <div class="sub">{{ d.platform }}{% if d.ver_os %} {{ d.ver_os }}{% endif %}
+                {% if d.blocked %}<span class="badge bad">заблокировано</span>{% endif %}</div>
+            </td>
+            <td class="mono small">{{ d.hwid_short }}</td>
+            <td class="small muted nowrap">{{ d.last_seen[:16]|replace('T', ' ') }}</td>
+            <td class="right nowrap">
+              <form method="post" action="/users/{{ c.id }}/devices/{{ d.id }}/block" style="display:inline">
+                <button class="btn sm" type="submit">{{ 'Разблок.' if d.blocked else 'Блок' }}</button>
+              </form>
+              <form method="post" action="/users/{{ c.id }}/devices/{{ d.id }}/delete" style="display:inline"
+                    data-confirm="Отвязать это устройство?">
+                <button class="btn sm danger" type="submit">×</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <div class="card-f spread">
+        <span class="small faint">Приходят заголовком <span class="mono">X-HWID</span> от Happ и подобных клиентов.</span>
+        <form method="post" action="/users/{{ c.id }}/devices/reset"
+              data-confirm="Отвязать все устройства?">
+          <button class="btn sm" type="submit">Отвязать все</button>
+        </form>
+      </div>
+      {% else %}
+      <div class="empty">Устройства не привязаны. Лимит: {{ dev.limit or 'без ограничения' }}.</div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Трафик по дням</h2></div>
+      {% if daily %}
+      <table class="tbl">
+        <thead><tr><th>День</th><th class="right">Отдано</th><th class="right">Принято</th></tr></thead>
+        <tbody>
+        {% for d in daily %}
+          <tr>
+            <td class="mono">{{ d.day }}</td>
+            <td class="right num">{{ d.up|bytes }}</td>
+            <td class="right num">{{ d.down|bytes }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">Статистики пока нет — нода отдаёт её раз в минуту.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="stack">
+    {% if settings().sub_show_qr %}
+    <div class="card">
+      <div class="card-h"><h2>QR</h2></div>
+      <div class="card-b center">
+        <img src="/api/qr/{{ c.id }}.png" alt="QR подписки" width="190" height="190"
+             style="border:1px solid var(--line);border-radius:8px;padding:6px;background:#fff">
+        <div class="small faint mt8">Сканируется в Happ, v2RayTun, Streisand</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-h"><h2>Использование</h2></div>
+      <div class="card-b">
+        {% set pct = (c.used * 100 / c.limit_bytes) if c.limit_bytes else 0 %}
+        <div class="spread" style="margin-bottom:8px">
+          <span class="num" style="font-size:20px;font-weight:600">{{ c.used_h }}</span>
+          <span class="small muted">из {{ c.limit_h }}</span>
+        </div>
+        <div class="bar {{ 'bad' if pct >= 100 else ('warn' if pct >= 85 else '') }}">
+          <i style="width: {{ [pct, 100]|min|round(1) }}%"></i>
+        </div>
+        <dl class="kv mt16">
+          <dt>Отдано</dt><dd class="num">{{ c.up_bytes|bytes }}</dd>
+          <dt>Принято</dt><dd class="num">{{ c.down_bytes|bytes }}</dd>
+          <dt>Истекает</dt>
+          <dd class="{{ 'red' if c.status == 'expired' else ('amber' if (c.days_left is not none and c.days_left <= 5) else '') }}"
+              style="{{ 'color:var(--bad)' if c.status == 'expired' else ('color:var(--warn)' if (c.days_left is not none and c.days_left <= 5) else '') }}">
+            {{ c.expire_at[:10] or 'бессрочно' }}
+            {% if c.days_left is not none %}· {{ c.days_left }} дн.{% endif %}
+          </dd>
+          <dt>Последняя активность</dt><dd>{{ c.last_seen[:16].replace('T',' ') or '—' }}</dd>
+          <dt>UUID</dt><dd class="mono" style="word-break:break-all">{{ c.uuid }}</dd>
+        </dl>
+        <form method="post" action="/users/{{ c.id }}/reset" class="mt16"
+              data-confirm="Сбросить счётчики трафика?">
+          <button class="btn sm wide" type="submit">Сбросить трафик</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Настройки</h2></div>
+      <div class="card-b">
+        <form class="form" method="post" action="/users/{{ c.id }}/update">
+          <div class="field">
+            <label for="e-name">Имя</label>
+            <input class="input" id="e-name" name="name" value="{{ c.name }}" required>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="e-days">Продлить, дней</label>
+              <input class="input" id="e-days" name="days" type="number" value="0" min="0">
+              <span class="hint">0 — не менять</span>
+            </div>
+            <div class="field">
+              <label for="e-limit">Лимит, ГБ</label>
+              <input class="input" id="e-limit" name="limit_gb" type="number" min="0"
+                     value="{{ (c.limit_bytes / 1073741824)|round(0)|int if c.limit_bytes else 0 }}">
+            </div>
+          </div>
+          <div class="field">
+            <label for="e-dev">Лимит устройств</label>
+            <input class="input" id="e-dev" name="device_limit" type="number" min="0"
+                   value="{{ c.device_limit or 0 }}">
+            <span class="hint">0 — как в настройках панели ({{ settings().hwid_limit or 'без ограничения' }}).</span>
+          </div>
+          <div class="field">
+            <label>Подключения</label>
+            <div class="pick-list">
+              {% for i in all_connections %}
+              <label>
+                <input type="checkbox" name="inbound_ids" value="{{ i.id }}"
+                       {{ 'checked' if i.id in c.inbound_ids }}>
+                <span>{{ i.remark or i.tag }} <span class="faint">· {{ i.node_name }}</span></span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="field">
+            <label for="e-note">Заметка</label>
+            <input class="input" id="e-note" name="note" value="{{ c.note }}">
+          </div>
+          <label class="check">
+            <input type="checkbox" name="enabled" {{ 'checked' if c.enabled }}>
+            <span>Включён</span>
+          </label>
+          <button class="btn primary wide" type="submit">Сохранить</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-b">
+        <form method="post" action="/users/{{ c.id }}/delete"
+              data-confirm="Удалить пользователя «{{ c.name }}»? Действие необратимо.">
+          <button class="btn danger wide" type="submit">Удалить пользователя</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Не найдено{% endblock %}
+{% block h1 %}404{% endblock %}
+{% block sub %}Страница не существует{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="empty">
+    <div class="big">Здесь ничего нет</div>
+    <div>Проверьте адрес или вернитесь на обзор.</div>
+    <a class="btn primary sm mt16" href="/dashboard">На обзор</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}{{ n.name }}{% endblock %}
+{% block h1 %}{{ n.name }}{% endblock %}
+{% block sub %}
+  {% if n.status == 'online' %}<span class="badge ok"><i class="dot"></i>онлайн</span>
+  {% elif n.status == 'pending' %}<span class="badge warn"><i class="dot"></i>ждёт установки</span>
+  {% elif n.status == 'error' %}<span class="badge bad"><i class="dot"></i>ошибка</span>
+  {% else %}<span class="badge bad"><i class="dot"></i>офлайн</span>{% endif %}
+  <span class="faint mono" style="margin-left:8px">{{ n.public_host or n.address }}:{{ n.api_port }}</span>
+{% endblock %}
+{% block actions %}
+  <a class="btn" href="/nodes">К списку</a>
+  <button class="btn" data-open="dlg-conn">Добавить подключение</button>
+  <form method="post" action="/nodes/{{ n.id }}/push" style="display:inline">
+    <button class="btn primary" type="submit">Применить конфиг</button>
+  </form>
+{% endblock %}
+
+{% block content %}
+{% if token %}
+<div class="card mb16" style="border-color:var(--line-strong)">
+  <div class="card-h">
+    <h2>Установка ноды</h2>
+    <span class="badge warn"><i class="dot"></i>токен действует 24 часа</span>
+  </div>
+  <div class="card-b">
+    <p class="small muted">Выполните на сервере ноды от root. Скрипт поставит движок,
+      выпустит сертификат и подключится к панели по mTLS.</p>
+    <div class="copy-row mt8">
+      <div class="code" id="install-cmd">{{ cmd }}</div>
+      <button class="btn" data-copy="#install-cmd">Копировать</button>
+    </div>
+    <div class="small faint mt8">Токен одноразовый: после подключения он сгорает.</div>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid split">
+  <div class="stack">
+    <div class="card">
+      <div class="card-h">
+        <h2>Подключения</h2>
+        <button class="btn sm" data-open="dlg-conn">Добавить</button>
+      </div>
+      {% if connections %}
+      <table class="tbl">
+        <thead><tr><th>Подключение</th><th>Протокол</th><th>Порт</th><th>Пользователи</th><th></th></tr></thead>
+        <tbody>
+        {% for i in connections %}
+          <tr>
+            <td>
+              <div class="name">{{ i.remark or i.tag }}</div>
+              <div class="sub mono">{{ i.tag }}</div>
+            </td>
+            <td>
+              <span class="tag">{{ i.protocol }}</span>
+              {% if i.network %}<span class="tag">{{ i.network }}</span>{% endif %}
+              {% if i.security %}<span class="tag">{{ i.security }}</span>{% endif %}
+            </td>
+            <td class="num">{{ i.port }}</td>
+            <td class="num muted">{{ i.clients }}</td>
+            <td class="right nowrap">
+              <form method="post" action="/connections/{{ i.id }}/toggle" style="display:inline">
+                <button class="btn sm" type="submit">{{ 'Выкл' if i.enabled else 'Вкл' }}</button>
+              </form>
+              <form method="post" action="/connections/{{ i.id }}/delete" style="display:inline"
+                    data-confirm="Удалить подключение «{{ i.remark or i.tag }}»?">
+                <button class="btn sm danger" type="submit">Удалить</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">
+        <div class="big">Подключений нет</div>
+        <div>Добавьте VLESS REALITY на 443 — самый ходовой вариант.</div>
+        <button class="btn primary sm mt16" data-open="dlg-conn">Добавить подключение</button>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Диагностика</h2></div>
+      <div class="card-b">
+        {% if health and health.ok %}
+          <div class="notice ok mb16">Агент отвечает. Движок: {{ health.engine or n.engine }},
+            версия {{ health.version or '—' }}.</div>
+          <dl class="kv">
+            <dt>Аптайм агента</dt><dd class="num">{{ health.uptime_h or '—' }} ч</dd>
+            <dt>Сервисы</dt><dd class="mono">{{ health.services or '—' }}</dd>
+            <dt>Сертификат ноды</dt><dd>{{ n.cert_expires[:10] or '—' }}</dd>
+          </dl>
+        {% elif health %}
+          <div class="notice bad">Агент недоступен: {{ health.error }}</div>
+        {% else %}
+          <div class="notice warn">Нода ещё не подключалась — сертификата нет.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-h"><h2>Параметры</h2></div>
+      <div class="card-b">
+        <dl class="kv">
+          <dt>Движок</dt><dd><span class="tag">{{ n.engine }}</span></dd>
+          <dt>Адрес для панели</dt><dd class="mono">{{ n.address }}:{{ n.api_port }}</dd>
+          <dt>Адрес в ссылках</dt><dd class="mono">{{ n.public_host or n.address }}</dd>
+          <dt>Последний отклик</dt><dd>{{ n.last_seen[:16].replace('T',' ') or '—' }}</dd>
+          <dt>Версия агента</dt><dd>{{ n.version or '—' }}</dd>
+          <dt>Сертификат до</dt><dd>{{ n.cert_expires[:10] or '—' }}</dd>
+          <dt>Заметка</dt><dd>{{ n.note or '—' }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Обслуживание</h2></div>
+      <div class="card-b stack" style="gap:8px">
+        <form method="post" action="/nodes/{{ n.id }}/rotate"
+              data-confirm="Старый токен перестанет работать. Продолжить?">
+          <button class="btn wide" type="submit">Новый токен установки</button>
+        </form>
+        <button class="btn wide" data-open="dlg-conn">Добавить подключение</button>
+        <form method="post" action="/nodes/{{ n.id }}/delete"
+              data-confirm="Удалить ноду и все её подключения?">
+          <button class="btn danger wide" type="submit">Удалить ноду</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Как это работает</h2></div>
+      <div class="card-b small muted">
+        <p>Панель подключается к агенту ноды по TLS с клиентским сертификатом
+          (<span class="mono">CN=hydra-master</span>). Нода принимает только соединения,
+          подписанные CA панели.</p>
+        <p class="mb0">Конфиг движка генерируется на панели и целиком перезаписывается на ноде.
+          Секретов, кроме сертификатов, на ноде не хранится.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<dialog id="dlg-conn" style="width:620px">
+  <form method="post" action="/nodes/{{ n.id }}/connections">
+    <div class="dlg-h">Новое подключение</div>
+    <div class="dlg-b stack" style="gap:12px">
+      <div class="form-row three">
+        <div class="field">
+          <label for="c-proto">Протокол</label>
+          <select id="c-proto" name="protocol">
+            <option value="vless">VLESS</option>
+            <option value="trojan">Trojan</option>
+            <option value="hysteria2">Hysteria2</option>
+          </select>
+        </div>
+        <div class="field" data-show="net">
+          <label for="c-net">Транспорт</label>
+          <select id="c-net" name="network">
+            <option value="raw">raw (TCP)</option>
+            <option value="xhttp">XHTTP</option>
+            <option value="grpc">gRPC</option>
+            <option value="ws">WebSocket</option>
+          </select>
+        </div>
+        <div class="field" data-show="sec">
+          <label for="c-sec">Безопасность</label>
+          <select id="c-sec" name="security">
+            <option value="reality">REALITY</option>
+            <option value="tls">TLS + fallback</option>
+            <option value="none">без TLS</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="c-port">Порт</label>
+          <input class="input" id="c-port" name="port" type="number" value="443">
+        </div>
+        <div class="field">
+          <label for="c-sni">SNI / домен</label>
+          <input class="input" id="c-sni" name="sni" placeholder="yahoo.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field" data-show="reality">
+          <label for="c-dest">REALITY dest</label>
+          <input class="input" id="c-dest" name="reality_dest" value="yahoo.com:443">
+        </div>
+        <div class="field" data-show="path">
+          <label for="c-path">Path</label>
+          <input class="input" id="c-path" name="path" value="/">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field" data-show="path">
+          <label for="c-host">Host</label>
+          <input class="input" id="c-host" name="host" placeholder="домен для заголовка Host">
+        </div>
+        <div class="field" data-show="grpc">
+          <label for="c-grpc">gRPC service name</label>
+          <input class="input" id="c-grpc" name="service_name" placeholder="hydra">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field" data-show="flow">
+          <label for="c-flow">Flow</label>
+          <select id="c-flow" name="flow">
+            <option value="xtls-rprx-vision">xtls-rprx-vision</option>
+            <option value="">нет</option>
+          </select>
+        </div>
+        <div class="field" data-show="obfs">
+          <label for="c-obfs">Obfs</label>
+          <select id="c-obfs" name="obfs_type">
+            <option value="salamander">salamander</option>
+            <option value="">нет</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="c-remark">Название</label>
+        <input class="input" id="c-remark" name="remark" placeholder="Например, DE-1 Vision">
+      </div>
+      <div class="notice">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             style="flex:0 0 15px;margin-top:2px;opacity:.6"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg>
+        <span>Ключи REALITY и shortId создаются автоматически. Порт должен быть свободен на ноде.</span>
+      </div>
+    </div>
+    <div class="dlg-f">
+      <button class="btn" type="button" data-close>Отмена</button>
+      <button class="btn primary" type="submit">Создать</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}

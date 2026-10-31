@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="{{ s.theme or 'dark' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ s.sub_title or 'Подписка' }}</title>
+  <style>
+    :root, [data-theme="dark"] {
+      --bg:#0d0f12; --surface:#14171b; --surface-2:#191d22; --line:#23272e;
+      --ink:#e7e9ec; --muted:#868d97; --faint:#626973; --btn:#e7e9ec; --btn-ink:#14171b;
+    }
+    [data-theme="light"] {
+      --bg:#f5f6f8; --surface:#fff; --surface-2:#fafbfc; --line:#e6e8ec;
+      --ink:#111827; --muted:#6b7280; --faint:#9aa1ac; --btn:#111827; --btn-ink:#fff;
+    }
+    :root { --accent: {{ accent or '#e7e9ec' }}; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 26px 16px 44px; background: var(--bg); color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 520px; margin: 0 auto; }
+    .brand { display: flex; align-items: center; gap: 9px; justify-content: center; margin-bottom: 18px; }
+    .brand svg { width: 24px; height: 24px; }
+    .brand b { font-size: 15px; font-weight: 650; letter-spacing: -.02em; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+    .pad { padding: 18px 20px; }
+    .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    h1 { font-size: 17px; margin: 0; font-weight: 600; letter-spacing: -.01em; }
+    .sub { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px;
+      border-radius: 6px; font-size: 11.5px; font-weight: 500;
+      background: rgba(74,222,128,.12); color: #4ade80; }
+    [data-theme="light"] .badge { background: #eefbf2; color: #15803d; }
+    .badge.off { background: rgba(248,113,113,.12); color: #f87171; }
+    [data-theme="light"] .badge.off { background: #fdf0f0; color: #b91c1c; }
+    .badge i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .bar { height: 6px; border-radius: 4px; background: var(--surface-2); overflow: hidden; margin: 8px 0 6px; }
+    .bar > span { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+    .nums { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted);
+      font-variant-numeric: tabular-nums; }
+    .url { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px;
+      background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+      padding: 10px 12px; word-break: break-all; color: var(--muted); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line);
+      background: transparent; color: var(--ink); font: inherit; font-size: 13px; font-weight: 500;
+      cursor: pointer; text-decoration: none; }
+    .btn:hover { border-color: var(--muted); }
+    .btn.primary { background: var(--btn); border-color: var(--btn); color: var(--btn-ink); }
+    .btn.primary:hover { opacity: .9; }
+    .btn.wide { width: 100%; }
+    .btn.sm { height: 30px; padding: 0 10px; font-size: 12.5px; }
+    .btn.grow { flex: 1; }
+    .row { display: flex; gap: 8px; }
+    .qr { display: block; margin: 4px auto 10px; width: 176px; height: 176px;
+      border: 1px solid var(--line); border-radius: 10px; padding: 8px; background: #fff; }
+    .h2 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint);
+      margin: 0 0 10px; font-weight: 500; }
+    details { border-top: 1px solid var(--line); padding: 11px 0; }
+    details:first-of-type { border-top: 0; }
+    summary { cursor: pointer; font-size: 13px; font-weight: 500; list-style: none;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--faint); font-size: 15px; }
+    details[open] summary::after { content: "–"; }
+    details ol { margin: 9px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--muted); }
+    details li { margin-bottom: 3px; }
+    .you { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--faint);
+      border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; margin-left: 8px; }
+    .announce { background: var(--surface-2); border: 1px solid var(--line); color: var(--ink);
+      border-radius: 8px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 14px; }
+    .foot { text-align: center; font-size: 12px; color: var(--faint); margin-top: 18px; }
+    .foot a { color: var(--muted); }
+    .mt { margin-top: 14px; }
+    @media (max-width: 480px) { .pad { padding: 16px; } .row .btn { padding: 0 10px; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none">
+      <rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M7 14.5c1.6 0 2.2-5 5-5s3.4 5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+    <b>{{ s.sub_title or 'Hydra VPN' }}</b>
+  </div>
+
+  {% if s.sub_announce %}<div class="announce">{{ s.sub_announce }}</div>{% endif %}
+
+  <div class="card pad">
+    <div class="head">
+      <div>
+        <h1>{{ c.name }}</h1>
+        <div class="sub">
+          {% if status == 'active' %}Подписка активна{% elif status == 'expired' %}Срок истёк{% elif status == 'limit' %}Лимит исчерпан{% else %}Отключена{% endif %}
+          · до {{ expire_h }}{% if dev and dev.enabled %} · устройств {{ dev.count }}{% if dev.limit %} из {{ dev.limit }}{% endif %}{% endif %}
+        </div>
+      </div>
+      <span class="badge {{ '' if status == 'active' else 'off' }}"><i></i>
+        {{ 'активна' if status == 'active' else 'неактивна' }}</span>
+    </div>
+
+    <div class="mt">
+      <div class="bar"><span style="width: {{ [used_pct, 100]|min }}%"></span></div>
+      <div class="nums"><span>{{ used_h }}</span><span>{{ limit_h }}</span></div>
+    </div>
+
+    {% if qr %}
+    <div class="mt">
+      <div class="h2">Быстрое подключение</div>
+      <img class="qr" src="{{ qr }}" alt="QR-код подписки">
+    </div>
+    {% endif %}
+
+    <div class="h2">Ссылка на подписку</div>
+    <div class="url" id="url">{{ url }}</div>
+    <div class="row mt">
+      <button class="btn primary grow" id="copy">Скопировать</button>
+      <a class="btn" href="{{ url }}/clash">Clash</a>
+      <a class="btn" href="{{ url }}/singbox">sing-box</a>
+    </div>
+  </div>
+
+  <div class="card pad mt">
+    <div class="h2">Как подключить{% if platform %} · {{ {'ios': 'iOS', 'android': 'Android', 'windows': 'Windows', 'macos': 'macOS', 'linux': 'Linux'}[platform] }}{% endif %}</div>
+    {% for g in guides %}
+    <details {{ 'open' if loop.first and platform }}>
+      <summary>
+        <span>{{ g.name }}{% if platform and platform in g.os and loop.first %}<span class="you">ваше устройство</span>{% endif %}</span>
+      </summary>
+      <ol>{% for step in g.steps %}<li>{{ step }}</li>{% endfor %}</ol>
+      <div class="row" style="margin-top:10px;gap:6px">
+        <button class="btn sm" data-copy="{{ g.link }}">Скопировать ссылку</button>
+        {% if g.deep_link %}<a class="btn sm" href="{{ g.deep_link }}">Открыть в {{ g.name }}</a>{% endif %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+
+  <div class="foot">
+    {% if s.sub_support_url %}Нужна помощь? <a href="{{ s.sub_support_url }}">Написать в поддержку</a>{% endif %}
+    <div style="margin-top:6px">{{ s.sub_title or 'Hydra VPN' }}</div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-copy]');
+    if (!b) return;
+    var old = b.textContent;
+    navigator.clipboard.writeText(b.getAttribute('data-copy')).then(function () {
+      b.textContent = 'Скопировано';
+      setTimeout(function () { b.textContent = old; }, 1400);
+    });
+  });
+
+  document.getElementById('copy').addEventListener('click', function () {
+    var t = document.getElementById('url').textContent.trim();
+    var b = this, old = b.textContent;
+    navigator.clipboard.writeText(t).then(function () {
+      b.textContent = 'Скопировано';
+      setTimeout(function () { b.textContent = old; }, 1400);
+    });
+  });
+</script>
+</body>
+</html>

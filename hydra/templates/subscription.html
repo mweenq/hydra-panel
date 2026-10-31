@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Подписка{% endblock %}
+{% block h1 %}Подписка{% endblock %}
+{% block sub %}Что и в каком виде получает каждое приложение, и как выглядит страница подписки{% endblock %}
+
+{% block content %}
+<div class="grid split">
+  <div class="stack">
+    <div class="card">
+      <div class="card-h"><h2>Приложения</h2><span class="small muted">формат определяется по User-Agent</span></div>
+      <form method="post" action="/subscription/apps">
+        <table class="tbl">
+          <thead>
+            <tr><th>Приложение</th><th>Формат профиля</th><th class="right">Вкл</th></tr>
+          </thead>
+          <tbody>
+          {% for a in apps %}
+            <tr>
+              <td>
+                <div class="name">{{ a.name }}</div>
+                <div class="sub">{{ a.hint }}</div>
+              </td>
+              <td>
+                <select name="fmt_{{ a.key }}" style="max-width:190px">
+                  {% for f in formats %}
+                  <option value="{{ f }}" {{ 'selected' if a.format == f }}>{{ labels[f] }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td class="right">
+                <label class="switch" style="margin-left:auto">
+                  <input type="checkbox" name="on_{{ a.key }}" {{ 'checked' if a.enabled }}>
+                  <span></span>
+                </label>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        <div class="card-f spread">
+          <span class="small faint">Один и тот же URL отдаёт разное — по заголовку клиента.
+            Happ передаёт JSON ядру Xray как есть, поэтому для него есть отдельный формат
+            <span class="mono">JSON (Xray / Happ)</span>.</span>
+          <button class="btn primary sm" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Проверка автоопределения</h2></div>
+      <div class="card-b">
+        <form method="get" action="/subscription" class="row" style="gap:8px">
+          <input class="input" name="ua" value="{{ ua }}"
+                 placeholder="Happ/2.1.0 (iPhone; iOS 17.4)" style="flex:1">
+          <button class="btn" type="submit">Проверить</button>
+        </form>
+        {% if result %}
+        <div class="card mt16" style="background:var(--surface-2)">
+          <div class="card-b">
+            <dl class="kv">
+              <dt>Приложение</dt><dd>{{ result.app }}</dd>
+              <dt>Формат</dt><dd><span class="tag">{{ result.format }}</span> {{ result.content_type }}</dd>
+              <dt>Размер</dt><dd class="num">{{ result.size }} байт</dd>
+            </dl>
+            <div class="code mt16">{{ result.first_line }}</div>
+          </div>
+        </div>
+        {% else %}
+        <div class="small faint mt16">Вставьте User-Agent клиента — покажу, какой профиль он получит.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <form method="post" action="/subscription/save">
+      <div class="card">
+        <div class="card-h"><h2>Страница подписки</h2></div>
+        <div class="card-b stack" style="gap:12px">
+          <div class="field">
+            <label for="s-title">Заголовок</label>
+            <input class="input" id="s-title" name="sub_title" value="{{ s.sub_title }}">
+          </div>
+          <div class="field">
+            <label for="s-support">Ссылка на поддержку</label>
+            <input class="input" id="s-support" name="sub_support_url" value="{{ s.sub_support_url }}"
+                   placeholder="https://t.me/your_support">
+          </div>
+          <div class="field">
+            <label for="s-announce">Объявление</label>
+            <textarea id="s-announce" name="sub_announce" rows="3"
+                      placeholder="Технические работы в субботу с 02:00">{{ s.sub_announce }}</textarea>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="s-theme">Акцент</label>
+              <input class="input" id="s-theme" name="sub_theme" type="color" value="{{ s.sub_theme }}">
+            </div>
+            <div class="field">
+              <label for="s-hours">Обновление, ч</label>
+              <input class="input" id="s-hours" name="sub_update_hours" type="number"
+                     value="{{ s.sub_update_hours }}" min="1">
+            </div>
+          </div>
+          <label class="check">
+            <input type="checkbox" name="sub_show_qr" {{ 'checked' if s.sub_show_qr }}>
+            <span>Показывать QR-код</span>
+          </label>
+          <button class="btn primary wide" type="submit">Сохранить</button>
+        </div>
+      </div>
+    </form>
+
+    <div class="card">
+      <div class="card-h"><h2>Инструкции</h2></div>
+      <div class="card-b small muted">
+        <p>Страница подписки сама определяет устройство по User-Agent и подставляет нужный
+          блок: iOS → Happ / v2RayTun / Streisand, Android → Happ / v2RayTun / v2rayNG,
+          Windows и macOS → Hiddify / v2rayN, Clash-семейство → YAML-профиль.</p>
+        <p class="mb0">Если клиент не опознан, показываются все варианты — лишнего не ломает.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

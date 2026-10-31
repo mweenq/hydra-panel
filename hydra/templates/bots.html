@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Telegram-боты{% endblock %}
+{% block h1 %}Telegram-боты{% endblock %}
+{% block sub %}Управление панелью из чата и выдача подписок{% endblock %}
+{% block actions %}
+  <div class="tabs">
+    <a href="/bots" class="{{ 'on' if path == '/bots' }}">Боты</a>
+    <a href="/bots/payments" class="{{ 'on' if path.startswith('/bots/payments') }}">Оплата</a>
+    <a href="/bots/texts" class="{{ 'on' if path.startswith('/bots/texts') }}">Сообщения</a>
+  </div>
+  <form method="post" action="/bots/test">
+    <button class="btn" type="submit">Проверить связь</button>
+  </form>
+{% endblock %}
+
+{% block content %}
+<form method="post" action="/bots/save">
+  <div class="grid c2">
+    <div class="card">
+      <div class="card-h"><h2>Админ-бот</h2><span class="badge plain">управление</span></div>
+      <div class="card-b">
+        <div class="field">
+          <label for="b-token">Токен</label>
+          <input class="input" id="b-token" name="bot_token" value="{{ s.bot_token }}"
+                 placeholder="123456789:AA…">
+          <span class="hint">Получить у <span class="mono">@BotFather</span>.</span>
+        </div>
+        <div class="field mt16">
+          <label for="b-admins">Telegram ID админов</label>
+          <input class="input" id="b-admins" name="admin_tg_ids" value="{{ s.admin_tg_ids }}"
+                 placeholder="11111111, 22222222">
+          <span class="hint">Через запятую. Узнать свой — <span class="mono">@userinfobot</span>.</span>
+        </div>
+        <div class="field mt16">
+          <label for="b-chat">Куда присылать бэкапы</label>
+          <input class="input" id="b-chat" name="backup_tg_chat" value="{{ s.backup_tg_chat }}"
+                 placeholder="ID чата или канала">
+        </div>
+        <div class="card" style="margin-top:16px;background:var(--surface-2)">
+          <div class="card-b">
+            <div class="small muted mb0" style="margin-bottom:8px">Команды</div>
+            <div class="mono small" style="line-height:1.9">
+              /stats — сводка<br>
+              /nodes — список нод<br>
+              /clients — пользователи<br>
+              /push &lt;id&gt; — применить конфиг<br>
+              /ban &lt;id&gt;, /unban &lt;id&gt;<br>
+              /backup — архив в чат
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Бот подписок</h2><span class="badge plain">для клиентов</span></div>
+      <div class="card-b">
+        <div class="field">
+          <label for="b-utoken">Токен</label>
+          <input class="input" id="b-utoken" name="user_bot_token" value="{{ s.user_bot_token }}"
+                 placeholder="987654321:AA…">
+          <span class="hint">Отдельный бот, чтобы клиенты не видели админские команды.</span>
+        </div>
+        <label class="check mt16">
+          <input type="checkbox" name="user_bot_enabled" {{ 'checked' if s.user_bot_enabled }}>
+          <span>Бот включён</span>
+        </label>
+        <div class="card" style="margin-top:16px;background:var(--surface-2)">
+          <div class="card-b">
+            <div class="small muted" style="margin-bottom:8px">Как работает</div>
+            <p class="small muted mb0">Клиент присылает токен из своей ссылки
+              <span class="mono">/sub/&lt;токен&gt;</span> — бот привязывает Telegram ID и дальше
+              показывает статус, ссылку, QR и инструкции под Happ, v2RayTun, Clash, sing-box.</p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px;background:var(--surface-2)">
+          <div class="card-b">
+            <div class="spread" style="margin-bottom:8px">
+              <div class="small muted">Оплата</div>
+              <span class="badge {{ 'ok' if pay_on else 'plain' }}">{{ 'включена' if pay_on else 'выключена' }}</span>
+            </div>
+            <p class="small muted mb0">
+              Тарифов: <b>{{ pay_plans }}</b> · оплачено: <b>{{ pay_stats.paid }}</b>
+              {% if pay_stats.pending %} · ждут подтверждения: <b>{{ pay_stats.pending }}</b>{% endif %}<br>
+              Тарифы и способы оплаты — <a href="/bots/payments">Оплата</a>,
+              формулировки сообщений — <a href="/bots/texts">Сообщения</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mt16" style="justify-content:flex-end">
+    <button class="btn primary" type="submit">Сохранить</button>
+  </div>
+</form>
+
+<div class="notice mt16">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+       style="flex:0 0 15px;margin-top:2px;opacity:.6"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg>
+  <div>После смены токенов перезапустите службу: <span class="mono">systemctl restart hydra</span>.
+    «Проверить связь» отправляет тестовое сообщение первому ID из списка админов.</div>
+</div>
+{% endblock %}

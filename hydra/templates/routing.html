@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Маршрутизация{% endblock %}
+{% block h1 %}Маршрутизация{% endblock %}
+{% block sub %}Правила уходят клиентам в профиль подписки: что идёт через VPN, что напрямую, что блокируется{% endblock %}
+
+{% block content %}
+<div class="grid split">
+  <div class="stack">
+    <div class="card">
+      <div class="card-h">
+        <h2>Правила</h2>
+        <span class="small muted">{{ rules|length }}</span>
+      </div>
+      {% if rules %}
+      <table class="tbl">
+        <thead>
+          <tr><th style="width:34px">#</th><th>Тип</th><th>Значение</th><th>Действие</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for r in rules %}
+          <tr>
+            <td class="faint num">{{ loop.index }}</td>
+            <td><span class="tag">{{ r.kind }}</span></td>
+            <td>
+              <span class="mono">{{ r.value }}</span>
+              {% if not r.enabled %}<span class="badge" style="margin-left:6px">выкл</span>{% endif %}
+            </td>
+            <td>
+              {% if r.action == 'proxy' %}<span class="badge ok"><i class="dot"></i>через VPN</span>
+              {% elif r.action == 'direct' %}<span class="badge"><i class="dot"></i>напрямую</span>
+              {% else %}<span class="badge bad"><i class="dot"></i>блок</span>{% endif %}
+            </td>
+            <td class="right nowrap">
+              <form method="post" action="/routing/{{ r.id }}/move" style="display:inline">
+                <input type="hidden" name="delta" value="-1">
+                <button class="btn sm icon" type="submit" title="Выше">↑</button>
+              </form>
+              <form method="post" action="/routing/{{ r.id }}/move" style="display:inline">
+                <input type="hidden" name="delta" value="1">
+                <button class="btn sm icon" type="submit" title="Ниже">↓</button>
+              </form>
+              <form method="post" action="/routing/{{ r.id }}/toggle" style="display:inline">
+                <button class="btn sm" type="submit">{{ 'Выкл' if r.enabled else 'Вкл' }}</button>
+              </form>
+              <form method="post" action="/routing/{{ r.id }}/delete" style="display:inline"
+                    data-confirm="Удалить правило?">
+                <button class="btn sm danger" type="submit">×</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">
+        <div class="big">Правил нет</div>
+        <div>Без правил весь трафик идёт через VPN — это нормальный дефолт.</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Как это увидит клиент</h2><span class="small muted">Clash / mihomo</span></div>
+      <div class="card-b">
+        <div class="code">{{ preview }}</div>
+        <div class="small faint mt8">sing-box получает те же правила в виде route.rules; geosite/geoip
+          в sing-box не переносятся — там нужны внешние rule_set.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-h"><h2>Добавить правило</h2></div>
+      <div class="card-b">
+        <form class="form" method="post" action="/routing/new">
+          <div class="field">
+            <label for="r-kind">Тип</label>
+            <select id="r-kind" name="kind">
+              {% for k, title in kinds.items() %}<option value="{{ k }}">{{ title }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="r-value">Значение</label>
+            <input class="input" id="r-value" name="value" placeholder="example.com / 10.0.0.0/8 / ru" required>
+          </div>
+          <div class="field">
+            <label for="r-action">Действие</label>
+            <select id="r-action" name="action">
+              {% for a, title in actions.items() %}<option value="{{ a }}">{{ title }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="r-note">Заметка</label>
+            <input class="input" id="r-note" name="note" placeholder="Необязательно">
+          </div>
+          <button class="btn primary wide" type="submit">Добавить</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Готовые наборы</h2></div>
+      <div class="card-b stack" style="gap:8px">
+        <form method="post" action="/routing/preset">
+          <input type="hidden" name="preset" value="lan">
+          <button class="btn wide" type="submit">Локальная сеть — напрямую</button>
+        </form>
+        <form method="post" action="/routing/preset">
+          <input type="hidden" name="preset" value="ads">
+          <button class="btn wide" type="submit">Блокировать рекламу</button>
+        </form>
+        <form method="post" action="/routing/preset">
+          <input type="hidden" name="preset" value="ru">
+          <button class="btn wide" type="submit">RU-сайты — напрямую</button>
+        </form>
+      </div>
+      <div class="card-f small faint">
+        Наборы просто добавляют правила — потом их можно выключить или удалить по одному.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

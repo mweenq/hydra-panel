@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% block title %}Настройки{% endblock %}
+{% block h1 %}Настройки{% endblock %}
+{% block sub %}Панель, движки и маскировка{% endblock %}
+{% block actions %}
+  <a class="btn" href="/" target="_blank" rel="noopener">Открыть корень</a>
+{% endblock %}
+
+{% block content %}
+<form method="post" action="/settings" class="stack" data-busy="off">
+  <div class="card">
+    <div class="card-h"><h2>Панель</h2></div>
+    <div class="card-b">
+      <div class="form-row">
+        <div class="field">
+          <label for="s-url">Публичный адрес</label>
+          <input class="input" id="s-url" name="panel_url" value="{{ s.panel_url }}"
+                 placeholder="https://panel.example.com">
+          <span class="hint">Используется в ссылках на подписку и в команде установки нод.</span>
+        </div>
+        <div class="field">
+          <label for="s-apikey">API-ключ</label>
+          <input class="input" id="s-apikey" name="api_key" value="{{ s.api_key }}"
+                 placeholder="для внешних скриптов">
+          <span class="hint">Заголовок <span class="mono">X-Api-Key</span> в <span class="mono">/api/*</span>.</span>
+        </div>
+      </div>
+      <div class="form-row mt16">
+        <div class="field">
+          <label for="s-email">E-mail для ACME</label>
+          <input class="input" id="s-email" name="acme_email" value="{{ s.acme_email }}"
+                 placeholder="admin@example.com">
+        </div>
+        <div class="field">
+          <label for="s-tls">Режим TLS</label>
+          <select id="s-tls" name="tls_mode">
+            <option value="acme" {{ 'selected' if s.tls_mode == 'acme' }}>Let's Encrypt (acme.sh)</option>
+            <option value="selfsigned" {{ 'selected' if s.tls_mode == 'selfsigned' }}>Самоподписанный</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row mt16">
+        <div class="field">
+          <label for="s-wild">Wildcard-домен для нод</label>
+          <input class="input" id="s-wild" name="wildcard_domain" value="{{ s.wildcard_domain }}"
+                 placeholder="example.com">
+          <span class="hint">Один сертификат <span class="mono">*.example.com</span> раздаётся всем нодам.</span>
+        </div>
+        <div class="field">
+          <label for="s-theme">Тема по умолчанию</label>
+          <select id="s-theme" name="theme">
+            <option value="dark" {{ 'selected' if s.theme == 'dark' }}>тёмная</option>
+            <option value="light" {{ 'selected' if s.theme == 'light' }}>светлая</option>
+          </select>
+          <span class="hint">Переключатель в сайдбаре меняет её только у вас в браузере.</span>
+        </div>
+      </div>
+      <div class="form-row mt16">
+        <div class="field">
+          <label for="s-interval">Опрос нод, сек</label>
+          <input class="input" id="s-interval" name="traffic_check_interval" type="number"
+                 value="{{ s.traffic_check_interval }}" min="15">
+        </div>
+        <div class="field">
+          <label for="s-keep">Хранить бэкапов</label>
+          <input class="input" id="s-keep" name="backup_keep" type="number" value="{{ s.backup_keep }}" min="1">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Маскировка</h2></div>
+    <div class="card-b">
+      <div class="form-row">
+        <div class="field">
+          <label for="s-fb">Заглушка для fallback</label>
+          <input class="input" id="s-fb" name="fallback_dest" value="{{ s.fallback_dest }}"
+                 placeholder="yahoo.com:443">
+          <span class="hint">Куда уходит посторонний TLS. Локальный сайт — 127.0.0.1:8080.</span>
+        </div>
+        <div class="field">
+          <label for="s-decoy">Заголовок заглушки</label>
+          <input class="input" id="s-decoy" name="decoy_title" value="{{ s.decoy_title }}"
+                 placeholder="Company — solutions">
+        </div>
+      </div>
+      <div class="notice mt16">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             style="flex:0 0 15px;margin-top:2px;opacity:.6"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg>
+        <span>REALITY отдаёт запрос на <span class="mono">dest</span>. TLS-подключения уводят
+          посторонний трафик на порт 8080 — там nginx с заглушкой.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Корневая страница</h2></div>
+    <div class="card-b">
+      <div class="field">
+        <label for="s-root">Что отдавать на <span class="mono">/</span></label>
+        <select id="s-root" name="root_mode">
+          <option value="dashboard" {{ 'selected' if s.root_mode == 'dashboard' }}>Панель (редирект)</option>
+          <option value="redirect_sub" {{ 'selected' if s.root_mode == 'redirect_sub' }}>Редирект на ссылку</option>
+          <option value="custom" {{ 'selected' if s.root_mode == 'custom' }}>Свой HTML</option>
+        </select>
+      </div>
+      <div class="field mt16">
+        <label for="s-redirect">Куда редиректить</label>
+        <input class="input" id="s-redirect" name="root_redirect" value="{{ s.root_redirect }}"
+               placeholder="https://t.me/your_channel">
+      </div>
+      <div class="field mt16">
+        <label for="s-roothtml">Свой HTML</label>
+        <textarea class="code" id="s-roothtml" name="root_html"
+                  placeholder="&lt;!doctype html&gt;…">{{ s.root_html }}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Уведомления</h2>
+      <span class="small muted">напоминание об окончании подписки</span></div>
+    <div class="card-b">
+      <label class="check">
+        <input type="checkbox" name="notify_enabled" {{ 'checked' if s.notify_enabled }}>
+        <span>Напоминать в боте подписок</span>
+      </label>
+      <div class="field mt16" style="max-width:260px">
+        <label for="s-ndays">За сколько дней</label>
+        <input class="input" id="s-ndays" name="notify_days" type="number" min="1"
+               value="{{ s.notify_days }}">
+        <span class="hint">Одному клиенту — не чаще раза в сутки. Нужен токен бота
+          подписок и привязанный Telegram.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Устройства (HWID)</h2>
+      <span class="small muted">привязка по заголовку X-HWID</span></div>
+    <div class="card-b">
+      <label class="check">
+        <input type="checkbox" name="hwid_enabled" {{ 'checked' if s.hwid_enabled }}>
+        <span>Считать устройства</span>
+      </label>
+      <div class="form-row mt16">
+        <div class="field">
+          <label for="s-hwid">Лимит устройств на подписку</label>
+          <input class="input" id="s-hwid" name="hwid_limit" type="number" min="0"
+                 value="{{ s.hwid_limit }}">
+          <span class="hint">0 — не ограничивать (устройства всё равно видны в профиле).
+            Лимит можно переопределить у пользователя.</span>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <label class="check" style="height:34px">
+            <input type="checkbox" name="hwid_reset_on_pay" {{ 'checked' if s.hwid_reset_on_pay }}>
+            <span>Оплата снимает привязки</span>
+          </label>
+          <span class="hint">Клиент оплатил — все устройства отвязаны, можно зайти с новых.</span>
+        </div>
+      </div>
+      <div class="small faint mt16">Клиенты без <span class="mono">X-HWID</span> (clash, sing-box,
+        браузер) не блокируются, пока лимит не включён. С включённым лимитом подписка
+        требует заголовок — как у Happ и Remnawave-совместимых клиентов.</div>
+    </div>
+  </div>
+
+  <div class="row" style="justify-content:flex-end">
+    <button class="btn primary" type="submit">Сохранить настройки</button>
+  </div>
+</form>
+
+<div class="card mt16">
+  <div class="card-h">
+    <h2>Движки</h2>
+    <button class="btn sm" data-open="dlg-engine">Добавить движок</button>
+  </div>
+  <table class="tbl">
+    <thead>
+      <tr><th>Движок</th><th>Формат конфига</th><th>Бинарник</th><th>Заметка</th><th class="right">Вкл</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for e in engines %}
+      <tr>
+        <td class="name">{{ e.name }}</td>
+        <td>
+          <form method="post" action="/settings/engines/{{ e.id }}/update" id="eng-{{ e.id }}"></form>
+          <select name="kind" form="eng-{{ e.id }}" style="max-width:150px">
+            <option value="xray" {{ 'selected' if e.kind == 'xray' }}>xray (JSON)</option>
+            <option value="singbox" {{ 'selected' if e.kind == 'singbox' }}>sing-box (JSON)</option>
+            <option value="hysteria2" {{ 'selected' if e.kind == 'hysteria2' }}>hysteria2 (YAML)</option>
+          </select>
+        </td>
+        <td>
+          <input class="input mono" name="binary" form="eng-{{ e.id }}" value="{{ e.binary }}"
+                 style="max-width:280px;font-size:12px">
+        </td>
+        <td class="small muted">{{ e.note }}</td>
+        <td class="right">
+          <label class="switch" style="margin-left:auto">
+            <input type="checkbox" name="enabled" form="eng-{{ e.id }}" {{ 'checked' if e.enabled }}>
+            <span></span>
+          </label>
+        </td>
+        <td class="right nowrap">
+          <button class="btn sm" type="submit" form="eng-{{ e.id }}">Ок</button>
+          <form method="post" action="/settings/engines/{{ e.id }}/delete" style="display:inline"
+                data-confirm="Удалить движок {{ e.name }}?">
+            <button class="btn sm danger" type="submit">×</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div class="card-f small faint">
+    Формат конфига определяет, как панель собирает файл для ноды: xray-совместимые движки
+    (xray, openflux, wt, qwdtt) получают JSON, hysteria2 — YAML, sing-box — свой JSON.
+  </div>
+</div>
+
+<div class="grid c2 mt16">
+  <div class="card">
+    <div class="card-h"><h2>Пароль администратора</h2></div>
+    <div class="card-b">
+      <form class="form" method="post" action="/settings/password">
+        <div class="field">
+          <label for="s-pass">Новый пароль</label>
+          <input class="input" id="s-pass" name="password" type="password" minlength="8" required>
+          <span class="hint">Минимум 8 символов.</span>
+        </div>
+        <button class="btn" type="submit">Сменить пароль</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Администраторы</h2></div>
+    <table class="tbl">
+      <thead><tr><th>Логин</th><th>Telegram</th><th>Создан</th></tr></thead>
+      <tbody>
+      {% for a in admins %}
+        <tr>
+          <td class="name">{{ a.username }}</td>
+          <td class="mono muted">{{ a.tg_id or '—' }}</td>
+          <td class="muted">{{ a.created_at[:10] }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<dialog id="dlg-engine">
+  <form method="post" action="/settings/engines/new">
+    <div class="dlg-h">Новый движок</div>
+    <div class="dlg-b stack" style="gap:12px">
+      <div class="field">
+        <label for="e-name">Имя</label>
+        <input class="input" id="e-name" name="name" placeholder="например, v2fly" required autofocus>
+        <span class="hint">Это имя выбирается при создании ноды.</span>
+      </div>
+      <div class="field">
+        <label for="e-kind">Формат конфига</label>
+        <select id="e-kind" name="kind">
+          <option value="xray">xray (JSON)</option>
+          <option value="singbox">sing-box (JSON)</option>
+          <option value="hysteria2">hysteria2 (YAML)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="e-bin">Путь к бинарнику на ноде</label>
+        <input class="input" id="e-bin" name="binary" placeholder="/opt/hydra-node/xray/v2fly">
+      </div>
+      <div class="field">
+        <label for="e-note">Заметка</label>
+        <input class="input" id="e-note" name="note" placeholder="Необязательно">
+      </div>
+    </div>
+    <div class="dlg-f">
+      <button class="btn" type="button" data-close>Отмена</button>
+      <button class="btn primary" type="submit">Добавить</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}

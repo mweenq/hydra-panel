@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+data/
+.testdata/
+.testnode/
+.shots/
+*.log
+.DS_Store
+.workbuddy-ai/
+.pytest_cache/
+dist/
+*.zip

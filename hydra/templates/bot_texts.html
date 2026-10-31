@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Сообщения бота{% endblock %}
+{% block h1 %}Сообщения бота{% endblock %}
+{% block sub %}Редактор текстов, которые клиент видит в боте подписок{% endblock %}
+{% block actions %}
+  <div class="tabs">
+    <a href="/bots">Боты</a>
+    <a href="/bots/payments">Оплата</a>
+    <a href="/bots/texts" class="on">Сообщения</a>
+  </div>
+  <form method="post" action="/bots/texts/reset"
+        data-confirm="Вернуть все тексты к заводским? Правки будут потеряны.">
+    <input type="hidden" name="all" value="1">
+    <button class="btn" type="submit">Сбросить всё</button>
+  </form>
+{% endblock %}
+
+{% block content %}
+<form method="post" action="/bots/texts/save" data-busy="off">
+  <div class="grid split">
+    <div class="stack">
+      {% for g in groups %}
+      <div class="card">
+        <div class="card-h">
+          <h2>{{ g.name }}</h2>
+          <span class="small muted">{{ g['items']|length }} текст(ов)</span>
+        </div>
+        <div class="card-b stack" style="gap:18px">
+          {% for it in g['items'] %}
+          <div class="field">
+            <div class="spread" style="margin-bottom:6px;gap:8px;align-items:baseline">
+              <label for="t-{{ it.key }}">
+                {{ it.label }}
+                {% if it.custom %}<span class="badge warn">своё</span>{% endif %}
+              </label>
+              <span class="small faint mono">{{ it.key }}</span>
+            </div>
+            <textarea id="t-{{ it.key }}" name="t_{{ it.key }}"
+                      rows="{{ [2, it.text.count('\n') + 1]|max }}"
+                      style="min-height:{{ 64 if '\n' not in it.text else 104 }}px">{{ it.text }}</textarea>
+            <div class="row wrap" style="gap:6px;margin-top:7px">
+              {% for v in it.vars %}
+              <span class="tag mono" title="{{ vars_hint.get(v, '') }}">{{ '{' ~ v ~ '}' }}</span>
+              {% endfor %}
+              {% if it.vars %}<span class="small faint">— подставляются сами</span>{% endif %}
+              {% if it.custom %}
+              <button class="btn sm ghost" type="submit" form="reset-{{ it.key }}">Вернуть заводской</button>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn primary" type="submit">Сохранить</button>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Как писать</h2></div>
+        <div class="card-b small muted stack" style="gap:10px">
+          <p class="mb0">Разметка как в Telegram: <span class="mono">&lt;b&gt;</span>,
+            <span class="mono">&lt;i&gt;</span>, <span class="mono">&lt;code&gt;</span>,
+            <span class="mono">&lt;a href="…"&gt;</span>. Обычный текст — как есть.</p>
+          <p class="mb0">Переменные в фигурных скобках подставляет бот. Если переменной
+            в этом сообщении нет — она останется в тексте как есть, ничего не сломается.</p>
+          <p class="mb0">Пустое поле или текст, совпадающий с заводским, — это «без правки»:
+            после обновления панели формулировка подтянется сама.</p>
+          <p class="mb0">Тексты читаются ботом на лету — перезапуск службы не нужен,
+            достаточно открыть бота заново.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Предпросмотр</h2><span class="small muted">на тестовых данных</span></div>
+        <div class="card-b stack" style="gap:12px">
+          <div>
+            <div class="small faint" style="margin-bottom:5px">Статус подписки</div>
+            <div class="code wrap">{{ preview_status }}</div>
+          </div>
+          <div>
+            <div class="small faint" style="margin-bottom:5px">Карточка тарифа</div>
+            <div class="code wrap">{{ preview_pay }}</div>
+          </div>
+          <div>
+            <div class="small faint" style="margin-bottom:5px">Реквизиты для перевода</div>
+            <div class="code wrap">{{ preview_manual }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Переменные</h2></div>
+        <div class="card-b">
+          <dl class="kv">
+            {% for k, v in vars_hint.items() %}
+            <dt class="mono">{{ '{' ~ k ~ '}' }}</dt><dd class="small muted">{{ v }}</dd>
+            {% endfor %}
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% for g in groups %}{% for it in g['items'] %}{% if it.custom %}
+<form method="post" action="/bots/texts/reset" id="reset-{{ it.key }}" style="display:none">
+  <input type="hidden" name="key" value="{{ it.key }}">
+</form>
+{% endif %}{% endfor %}{% endfor %}
+{% endblock %}

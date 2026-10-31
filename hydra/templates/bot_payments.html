@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Оплата{% endblock %}
+{% block h1 %}Оплата{% endblock %}
+{% block sub %}Тарифы, способы оплаты и заявки из бота подписок{% endblock %}
+{% block actions %}
+  <div class="tabs">
+    <a href="/bots">Боты</a>
+    <a href="/bots/payments" class="on">Оплата</a>
+    <a href="/bots/texts">Сообщения</a>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="grid split">
+  <div class="stack">
+    <div class="card">
+      <div class="card-h">
+        <h2>Тарифы</h2>
+        <span class="small muted">что клиент видит по кнопке «Оплатить»</span>
+      </div>
+      <table class="tbl">
+        <thead>
+          <tr><th>Название</th><th>Срок</th><th>Трафик</th><th>Цена</th><th class="right">Вкл</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for p in plans %}
+          <tr>
+            <td>
+              <form method="post" action="/bots/payments/plans/{{ p.id }}/update" id="plan-{{ p.id }}"></form>
+              <input class="input" name="name" form="plan-{{ p.id }}" value="{{ p.name }}"
+                     style="max-width:190px">
+            </td>
+            <td>
+              <input class="input" name="days" form="plan-{{ p.id }}" type="number" min="0"
+                     value="{{ p.days }}" style="max-width:84px">
+            </td>
+            <td>
+              <input class="input" name="gb" form="plan-{{ p.id }}" type="number" min="0" step="1"
+                     value="{{ p.gb }}" style="max-width:84px" title="ГБ, 0 — не менять">
+            </td>
+            <td class="nowrap">
+              <input class="input" name="price" form="plan-{{ p.id }}" type="number" min="0" step="0.01"
+                     value="{{ p.price }}" style="max-width:96px">
+              <select name="currency" form="plan-{{ p.id }}" style="max-width:110px">
+                {% for code, name in currencies.items() %}
+                <option value="{{ code }}" {{ 'selected' if (p.currency or 'XTR')|upper == code }}>{{ code }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td class="right">
+              <label class="switch" style="margin-left:auto">
+                <input type="checkbox" name="enabled" form="plan-{{ p.id }}" {{ 'checked' if p.enabled }}>
+                <span></span>
+              </label>
+            </td>
+            <td class="right nowrap">
+              <button class="btn sm" type="submit" form="plan-{{ p.id }}">Ок</button>
+              <form method="post" action="/bots/payments/plans/{{ p.id }}/delete" style="display:inline"
+                    data-confirm="Удалить тариф {{ p.name }}?">
+                <button class="btn sm danger" type="submit">×</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="small faint">Тарифов пока нет — добавьте первый ниже.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+
+      <form method="post" action="/bots/payments/plans/new" class="card-f"
+            style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+        <div class="field" style="flex:2;min-width:150px">
+          <label for="n-name">Новый тариф</label>
+          <input class="input" id="n-name" name="name" placeholder="Месяц" required>
+        </div>
+        <div class="field" style="width:88px">
+          <label for="n-days">Дней</label>
+          <input class="input" id="n-days" name="days" type="number" value="30" min="0">
+        </div>
+        <div class="field" style="width:88px">
+          <label for="n-gb">ГБ</label>
+          <input class="input" id="n-gb" name="gb" type="number" value="0" min="0" step="1">
+        </div>
+        <div class="field" style="width:100px">
+          <label for="n-price">Цена</label>
+          <input class="input" id="n-price" name="price" type="number" value="0" min="0" step="0.01">
+        </div>
+        <div class="field" style="width:110px">
+          <label for="n-cur">Валюта</label>
+          <select id="n-cur" name="currency">
+            {% for code, name in currencies.items() %}
+            <option value="{{ code }}" {{ 'selected' if code == 'XTR' }}>{{ code }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="btn primary" type="submit">Добавить</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-h">
+        <h2>Заявки</h2>
+        <span class="small muted">
+          оплачено {{ stats.paid }}{% if stats.pending %} · ждут {{ stats.pending }}{% endif %}
+        </span>
+      </div>
+      <table class="tbl">
+        <thead>
+          <tr><th>#</th><th>Когда</th><th>Пользователь</th><th>Тариф</th><th>Сумма</th><th>Способ</th><th>Статус</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for p in payments %}
+          <tr>
+            <td class="num">{{ p.id }}</td>
+            <td class="small muted nowrap">{{ p.created_at[:16]|replace('T', ' ') }}</td>
+            <td>
+              <div class="name">{{ p.client_name or '—' }}</div>
+              <div class="sub mono">{{ p.tg_id }}</div>
+            </td>
+            <td class="small">{{ p.plan_name }}<br><span class="faint">{{ p.plan_h }}</span></td>
+            <td class="num nowrap">{{ p.amount_h }}</td>
+            <td class="small muted">{{ p.method_h }}</td>
+            <td>
+              {% if p.status == 'paid' %}<span class="badge ok">оплачено</span>
+              {% elif p.status == 'pending' %}<span class="badge warn">ждёт</span>
+              {% else %}<span class="badge plain">отклонено</span>{% endif %}
+            </td>
+            <td class="right nowrap">
+              {% if p.status == 'pending' %}
+              <form method="post" action="/bots/payments/{{ p.id }}/approve" style="display:inline">
+                <button class="btn sm primary" type="submit">Зачесть</button>
+              </form>
+              <form method="post" action="/bots/payments/{{ p.id }}/cancel" style="display:inline">
+                <button class="btn sm danger" type="submit">×</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="8" class="small faint">Заявок пока нет.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="stack">
+    <form method="post" action="/bots/payments/save">
+      <div class="card">
+        <div class="card-h"><h2>Способы оплаты</h2></div>
+        <div class="card-b stack" style="gap:12px">
+          <label class="check">
+            <input type="checkbox" name="pay_enabled" {{ 'checked' if s.pay_enabled }}>
+            <span>Оплата включена</span>
+          </label>
+          <div class="field">
+            <label for="p-title">Заголовок счёта</label>
+            <input class="input" id="p-title" name="pay_title" value="{{ s.pay_title }}">
+            <span class="hint">Подпись в чеке Telegram. До 32 символов.</span>
+          </div>
+
+          <div class="card" style="background:var(--surface-2)">
+            <div class="card-b stack" style="gap:10px">
+              <div class="small">Telegram Stars</div>
+              <p class="small muted mb0">Работает без провайдера: у тарифа с валютой
+                <span class="mono">XTR</span> клиент платит звёздами, панель сразу продлевает подписку.</p>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="p-provider">Токен платёжного провайдера</label>
+            <input class="input mono" id="p-provider" name="pay_provider_token"
+                   value="{{ s.pay_provider_token }}" placeholder="381764678:TEST:…">
+            <span class="hint">@BotFather → Payments. С ним работает оплата картой для тарифов в ₽ / $ / €.</span>
+          </div>
+          <div class="field">
+            <label for="p-cur">Валюта для провайдера</label>
+            <select id="p-cur" name="pay_currency">
+              {% for code, name in currencies.items() if code != 'XTR' %}
+              <option value="{{ code }}" {{ 'selected' if (s.pay_currency or 'RUB')|upper == code }}>
+                {{ code }} — {{ name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <label class="check">
+            <input type="checkbox" name="pay_manual_enabled" {{ 'checked' if s.pay_manual_enabled }}>
+            <span>Перевод вручную (подтверждает админ)</span>
+          </label>
+          <div class="field">
+            <label for="p-details">Реквизиты</label>
+            <textarea id="p-details" name="pay_manual_details" rows="4"
+                      placeholder="СБП: +7 900 000-00-00 (Иван П.)&#10;USDT TRC-20: T…">{{ s.pay_manual_details }}</textarea>
+            <span class="hint">Уходит клиенту как есть. После «Я оплатил» админам приходит
+              заявка с кнопками «Подтвердить» / «Отклонить».</span>
+          </div>
+          <div class="field">
+            <label for="p-support">Ссылка на поддержку</label>
+            <input class="input" id="p-support" name="pay_support_url" value="{{ s.pay_support_url }}"
+                   placeholder="https://t.me/your_support">
+          </div>
+          <button class="btn primary wide" type="submit">Сохранить</button>
+        </div>
+      </div>
+    </form>
+
+    <div class="card">
+      <div class="card-h"><h2>Как это выглядит</h2></div>
+      <div class="card-b small muted stack" style="gap:8px">
+        <p class="mb0">Клиент жмёт «Оплатить» → выбирает тариф → способ:
+          <b>звёзды</b>, <b>карта</b> или <b>перевод</b>.</p>
+        <p class="mb0">Звёзды и карта подтверждаются автоматически, перевод — кнопкой админа
+          в чате (или здесь, в таблице заявок).</p>
+        <p class="mb0">После оплаты подписка продлевается, трафик добавляется,
+          конфиг нод пересобирается сам.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

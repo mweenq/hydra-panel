@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Ноды{% endblock %}
+{% block h1 %}Ноды{% endblock %}
+{% block sub %}Серверы и их подключения{% endblock %}
+{% block actions %}
+  <button class="btn primary" data-open="dlg-node">Добавить ноду</button>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  {% if nodes %}
+  <table class="tbl">
+    <thead>
+      <tr><th>Нода</th><th>Движок</th><th>Статус</th><th>Подключения</th><th>Пользователи</th><th>Отклик</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for n in nodes %}
+      <tr>
+        <td>
+          <a class="name" href="/nodes/{{ n.id }}">{{ n.name }}</a>
+          <div class="sub mono">{{ n.public_host or n.address }}:{{ n.api_port }}</div>
+        </td>
+        <td><span class="tag">{{ n.engine }}</span></td>
+        <td>
+          {% if n.status == 'online' %}<span class="badge ok"><i class="dot"></i>онлайн</span>
+          {% elif n.status == 'pending' %}<span class="badge warn"><i class="dot"></i>ждёт установки</span>
+          {% elif n.status == 'error' %}<span class="badge bad"><i class="dot"></i>ошибка</span>
+          {% else %}<span class="badge bad"><i class="dot"></i>офлайн</span>{% endif %}
+        </td>
+        <td class="num muted">{{ n.connections }}</td>
+        <td class="num muted">{{ n.users }}</td>
+        <td class="small muted nowrap">{{ n.last_seen[:16].replace('T',' ') or '—' }}</td>
+        <td class="right"><a class="btn sm" href="/nodes/{{ n.id }}">Открыть</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    <div class="big">Нод пока нет</div>
+    <div>Добавьте сервер — заодно создадите первое подключение.</div>
+    <button class="btn primary sm mt16" data-open="dlg-node">Добавить ноду</button>
+  </div>
+  {% endif %}
+</div>
+
+<div class="notice mt16">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+       style="flex:0 0 15px;margin-top:2px;opacity:.6"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg>
+  <div>
+    Связь панель → нода идёт по mTLS на порт 8443. Нода получает сертификат от CA панели
+    при первом подключении по одноразовому токену, дальше токен не нужен.
+  </div>
+</div>
+
+<dialog id="dlg-node" style="width:600px">
+  <form method="post" action="/nodes/new">
+    <div class="dlg-h">Новая нода</div>
+    <div class="dlg-b stack" style="gap:12px">
+      <div class="form-row">
+        <div class="field">
+          <label for="d-name">Название</label>
+          <input class="input" id="d-name" name="name" placeholder="Франкфурт-1" required autofocus>
+        </div>
+        <div class="field">
+          <label for="d-addr">Адрес</label>
+          <input class="input" id="d-addr" name="address" placeholder="de1.example.com или 203.0.113.10" required>
+          <span class="hint">По нему панель ходит на ноду.</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="d-public">Публичный адрес для ссылок</label>
+        <input class="input" id="d-public" name="public_host" placeholder="оставьте пустым — возьмётся адрес выше">
+        <span class="hint">Если панель ходит по IP, а клиенты — по домену.</span>
+      </div>
+      <div class="form-row three">
+        <div class="field">
+          <label for="d-engine">Движок</label>
+          <select id="d-engine" name="engine">
+            {% for e in engines %}<option value="{{ e.name }}">{{ e.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="d-port">Порт агента</label>
+          <input class="input" id="d-port" name="api_port" type="number" value="8443">
+        </div>
+        <div class="field">
+          <label for="d-note">Заметка</label>
+          <input class="input" id="d-note" name="note" placeholder="Провайдер, локация">
+        </div>
+      </div>
+
+      <label class="check" style="border-top:1px solid var(--line);padding-top:12px">
+        <input type="checkbox" name="with_connection" checked id="d-with">
+        <span>Сразу создать подключение</span>
+      </label>
+
+      <div class="form-row three" id="d-conn-fields">
+        <div class="field">
+          <label for="d-proto">Протокол</label>
+          <select id="d-proto" name="protocol">
+            <option value="vless">VLESS</option>
+            <option value="trojan">Trojan</option>
+            <option value="hysteria2">Hysteria2</option>
+          </select>
+        </div>
+        <div class="field" data-show="net">
+          <label for="d-net">Транспорт</label>
+          <select id="d-net" name="network">
+            <option value="raw">raw (TCP)</option>
+            <option value="xhttp">XHTTP</option>
+            <option value="grpc">gRPC</option>
+            <option value="ws">WebSocket</option>
+          </select>
+        </div>
+        <div class="field" data-show="sec">
+          <label for="d-sec">Безопасность</label>
+          <select id="d-sec" name="security">
+            <option value="reality">REALITY</option>
+            <option value="tls">TLS + fallback</option>
+            <option value="none">без TLS</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="d-sni">SNI</label>
+          <input class="input" id="d-sni" name="sni" placeholder="yahoo.com">
+        </div>
+        <div class="field">
+          <label for="d-port2">Порт</label>
+          <input class="input" id="d-port2" name="port" type="number" value="443">
+        </div>
+      </div>
+      <label class="check">
+        <input type="checkbox" name="is_local"> <span>Это сама панель (localhost)</span>
+      </label>
+    </div>
+    <div class="dlg-f">
+      <button class="btn" type="button" data-close>Отмена</button>
+      <button class="btn primary" type="submit">Создать</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}

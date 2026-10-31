@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="{{ settings().theme or 'dark' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Вход · Hydra</title>
+  <link rel="stylesheet" href="/static/app.css?v={{ version }}">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+<div class="auth">
+  <div class="auth-card">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 24 24" fill="none">
+        <rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M7 14.5c1.6 0 2.2-5 5-5s3.4 5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      <span class="name">Hydra</span>
+    </div>
+
+    <div class="card">
+      <div class="card-b">
+        <h1>Вход в панель</h1>
+        <div class="sub">Управление нодами и подписками</div>
+
+        {% if err %}<div class="notice bad mb16">{{ err }}</div>{% endif %}
+
+        <form class="form" method="post" action="/login" data-busy="off">
+          <input type="hidden" name="next" value="{{ next }}">
+          <div class="field">
+            <label for="username">Логин</label>
+            <input class="input" id="username" name="username" autocomplete="username" autofocus required>
+          </div>
+          <div class="field">
+            <label for="password">Пароль</label>
+            <input class="input" id="password" name="password" type="password"
+                   autocomplete="current-password" required>
+          </div>
+          <button class="btn primary wide" type="submit">Войти</button>
+        </form>
+      </div>
+      <div class="card-f small">
+        Пароль администратора задаётся при установке. Забыли — <span class="mono">hydra passwd</span>.
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

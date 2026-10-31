@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Пользователи{% endblock %}
+{% block h1 %}Пользователи{% endblock %}
+{% block sub %}{{ users|length }} в списке · подписка обновляется автоматически{% endblock %}
+{% block actions %}
+  <form method="get" action="/users" class="row" style="gap:6px">
+    <input class="input" name="q" value="{{ q }}" placeholder="Поиск по имени" style="width:190px">
+    <button class="btn" type="submit">Найти</button>
+  </form>
+  <button class="btn primary" data-open="dlg-new">Новый пользователь</button>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  {% if users %}
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Пользователь</th>
+        <th>Статус</th>
+        <th style="width:200px">Трафик</th>
+        <th>Срок</th>
+        <th>Подключения</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td>
+          <a class="name" href="/users/{{ u.id }}">{{ u.name }}</a>
+          {% if u.note %}<div class="sub">{{ u.note[:70] }}</div>{% endif %}
+        </td>
+        <td>
+          {% if u.status == 'active' %}<span class="badge ok"><i class="dot"></i>активен</span>
+          {% elif u.status == 'disabled' %}<span class="badge"><i class="dot"></i>выключен</span>
+          {% elif u.status == 'expired' %}<span class="badge bad"><i class="dot"></i>истёк</span>
+          {% else %}<span class="badge warn"><i class="dot"></i>лимит</span>{% endif %}
+        </td>
+        <td>
+          {% set pct = (u.used * 100 / u.limit_bytes) if u.limit_bytes else 0 %}
+          <div class="row" style="gap:8px">
+            <span class="num nowrap" style="font-size:12.5px">{{ u.used_h }}</span>
+            <span class="faint num nowrap" style="font-size:12px">/ {{ u.limit_h }}</span>
+          </div>
+          <div class="bar {{ 'bad' if pct >= 100 else ('warn' if pct >= 85 else '') }}"
+               style="margin-top:6px">
+            <i style="width: {{ [pct, 100]|min|round(1) }}%"></i>
+          </div>
+        </td>
+        <td class="nowrap {{ 'red' if u.expire_state == 'expired' else ('amber' if u.expire_state == 'soon' else '') }}">
+          {{ u.expire_h }}
+          {% if u.days_left is not none and u.status != 'expired' and u.days_left <= 5 %}
+            <div class="sub" style="color:inherit;opacity:.8">
+              {{ 'сегодня' if u.days_left == 0 else ('остался 1 день' if u.days_left == 1 else 'осталось ' ~ u.days_left ~ ' дн.') }}
+            </div>
+          {% elif u.status == 'expired' %}
+            <div class="sub" style="color:inherit;opacity:.8">просрочен</div>
+          {% endif %}
+        </td>
+        <td class="num muted">{{ u.inbounds }}</td>
+        <td class="right"><a class="btn sm" href="/users/{{ u.id }}">Открыть</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    <div class="big">{{ 'Ничего не найдено' if q else 'Пользователей пока нет' }}</div>
+    <div>{{ 'Попробуйте другой запрос.' if q else 'Создайте первого — он сразу получит ссылку на подписку.' }}</div>
+    {% if not q %}<button class="btn primary sm mt16" data-open="dlg-new">Новый пользователь</button>{% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<dialog id="dlg-new">
+  <form method="post" action="/users/new">
+    <div class="dlg-h">Новый пользователь</div>
+    <div class="dlg-b stack" style="gap:12px">
+      <div class="field">
+        <label for="n-name">Имя</label>
+        <input class="input" id="n-name" name="name" placeholder="Например, Иван" required autofocus>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="n-days">Срок, дней</label>
+          <input class="input" id="n-days" name="days" type="number" value="30" min="0">
+          <span class="hint">0 — бессрочно</span>
+        </div>
+        <div class="field">
+          <label for="n-limit">Лимит, ГБ</label>
+          <input class="input" id="n-limit" name="limit_gb" type="number" value="0" min="0" step="1">
+          <span class="hint">0 — без лимита</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Подключения</label>
+        {% if connections %}
+        <div class="pick-list">
+          {% for i in connections %}
+          <label>
+            <input type="checkbox" name="inbound_ids" value="{{ i.id }}">
+            <span>{{ i.remark or i.tag }} <span class="faint">· {{ i.node_name }}:{{ i.port }}</span></span>
+          </label>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="notice warn">Сначала добавьте ноду с подключением — пользователю некуда подключаться.</div>
+        {% endif %}
+      </div>
+      <div class="field">
+        <label for="n-note">Заметка</label>
+        <input class="input" id="n-note" name="note" placeholder="Необязательно">
+      </div>
+      <div class="field">
+        <label for="n-tg">Telegram ID</label>
+        <input class="input" id="n-tg" name="tg_id" placeholder="Для бота выдачи подписок">
+      </div>
+    </div>
+    <div class="dlg-f">
+      <button class="btn" type="button" data-close>Отмена</button>
+      <button class="btn primary" type="submit">Создать</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
