@@ -252,7 +252,7 @@ def node_new(request: Request, name: str = Form(...), address: str = Form(...),
              engine: str = Form("xray"), api_port: int = Form(8443),
              is_local: str = Form(""), note: str = Form(""), public_host: str = Form(""),
              protocol: str = Form("vless"), network: str = Form("raw"),
-             security_: str = Form("reality", alias="security"), port: int = Form(443),
+             security_: str = Form("reality", alias="security"), port: int = Form(2443),
              sni: str = Form(""), with_connection: str = Form("")):
     if not _auth(request):
         return redirect("/login")
@@ -292,7 +292,7 @@ def node_page(request: Request, nid: int, token: str = ""):
 def node_connection_new(request: Request, nid: int, protocol: str = Form("vless"),
                         network: str = Form("raw"),
                         security_: str = Form("reality", alias="security"),
-                        port: int = Form(443), sni: str = Form(""), host: str = Form(""),
+                        port: int = Form(2443), sni: str = Form(""), host: str = Form(""),
                         path: str = Form("/"), service_name: str = Form(""),
                         flow: str = Form(""), reality_dest: str = Form("yahoo.com:443"),
                         remark: str = Form(""), obfs_type: str = Form(""),

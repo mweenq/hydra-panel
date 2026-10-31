@@ -643,3 +643,34 @@ def test_user_page_shows_devices(admin, sub_client):
     s = admin.get("/settings")
     assert "Устройства (HWID)" in s.text
     assert "Уведомления" in s.text
+
+
+def test_client_appears_in_node_payload(admin, node):
+    """Новый клиент должен попадать в конфиг ноды (иначе xray отвергнет его
+    как invalid request user id)."""
+    r = admin.post(
+        f"/nodes/{node}/connections",
+        data={"protocol": "vless", "network": "raw", "security": "reality",
+              "port": "2455", "sni": "yahoo.com", "flow": "xtls-rprx-vision",
+              "reality_dest": "yahoo.com:443", "remark": "t-push"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 303, r.text
+    inb = db.q1("SELECT id FROM inbounds WHERE tag='vless-raw-2455'")
+    assert inb, "инбаунд не создался"
+    cid, _ = new_client(admin, "t-client-push", [inb["id"]], 30, 0)
+    uuid = clients_svc.get_client(cid)["uuid"]
+    payload = nodes_svc.build_payload(node)
+    found = any(
+        any(c.get("id") == uuid for c in ib.get("settings", {}).get("clients", []))
+        for ib in (payload.get("xray") or {}).get("inbounds", [])
+    )
+    assert found, "uuid клиента не попал в конфиг ноды"
+    # после удаления клиента он должен исчезнуть из конфига
+    clients_svc.delete_client(cid)
+    payload2 = nodes_svc.build_payload(node)
+    found2 = any(
+        any(c.get("id") == uuid for c in ib.get("settings", {}).get("clients", []))
+        for ib in (payload2.get("xray") or {}).get("inbounds", [])
+    )
+    assert not found2

@@ -7,6 +7,30 @@ from datetime import datetime, timedelta, timezone
 from .. import db, security
 
 
+def _nodes_for_client(cid: int) -> set[int]:
+    """Ноды, на которые влияет клиент (через его подключения)."""
+    rows = db.q(
+        """SELECT DISTINCT i.node_id FROM client_inbounds ci
+           JOIN inbounds i ON i.id = ci.inbound_id WHERE ci.client_id = ?""",
+        (cid,),
+    )
+    return {r["node_id"] for r in rows}
+
+
+def _push_node(nid: int) -> None:
+    """Пересобрать конфиг ноды на агенте (ленивый импорт — избегаем цикла)."""
+    try:
+        from . import nodes as nodes_svc
+        nodes_svc.push_async(nid)
+    except Exception:
+        pass
+
+
+def _push_client(cid: int) -> None:
+    for nid in _nodes_for_client(cid):
+        _push_node(nid)
+
+
 def list_clients(search: str = "") -> list[dict]:
     sql = "SELECT * FROM clients"
     args: list = []
@@ -91,6 +115,7 @@ def create_client(name: str, inbound_ids: list[int], days: int = 30, limit_gb: f
     )
     set_inbounds(cid, inbound_ids)
     db.audit("client.create", target=str(cid), meta={"name": name})
+    _push_client(cid)
     return cid
 
 
@@ -104,19 +129,28 @@ def update_client(cid: int, **fields) -> None:
     if sets:
         args.append(cid)
         db.ex(f"UPDATE clients SET {', '.join(sets)} WHERE id=?", args)
+        # включение/срок/лимит меняют допуск клиента на ноде — пересобрать конфиг
+        if {"enabled", "expire_at", "limit_bytes"} & set(fields):
+            _push_client(cid)
 
 
 def set_inbounds(cid: int, inbound_ids: list[int]) -> None:
+    old = _nodes_for_client(cid)
     db.ex("DELETE FROM client_inbounds WHERE client_id=?", (cid,))
     for iid in inbound_ids:
         db.ex(
             "INSERT OR IGNORE INTO client_inbounds(client_id, inbound_id) VALUES(?,?)",
             (cid, int(iid)),
         )
+    for nid in (old | _nodes_for_client(cid)):
+        _push_node(nid)
 
 
 def delete_client(cid: int) -> None:
+    affected = _nodes_for_client(cid)
     db.ex("DELETE FROM clients WHERE id=?", (cid,))
+    for nid in affected:
+        _push_node(nid)
     db.audit("client.delete", target=str(cid))
 
 
