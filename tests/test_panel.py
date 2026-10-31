@@ -104,7 +104,7 @@ def test_inbound_reality_generates_keys(admin, node):
     r = admin.post(
         f"/nodes/{node}/connections",
         data={"protocol": "vless", "network": "raw", "security": "reality",
-              "port": "443", "sni": "yahoo.com", "flow": "xtls-rprx-vision",
+              "port": "2443", "sni": "yahoo.com", "flow": "xtls-rprx-vision",
               "reality_dest": "yahoo.com:443", "remark": "Reality"},
         follow_redirects=False,
     )
@@ -451,7 +451,8 @@ def test_happ_json_profile(admin, sub_client):
     assert [o["tag"] for o in auto["outbounds"]][-2:] == ["direct", "block"]
 
     single = items[1]
-    assert single["remarks"].startswith(db.get_setting("sub_title"))
+    # имя профиля теперь — имя клиента, какое указал пользователь (без префикса)
+    assert single["remarks"] == "Абонент"
     assert [o["tag"] for o in single["outbounds"]] == ["proxy", "direct", "block"]
     assert {i["protocol"] for i in single["inbounds"]} == {"socks", "http"}
     assert single["routing"]["rules"]
@@ -462,6 +463,21 @@ def test_happ_json_profile(admin, sub_client):
     # hysteria2 в диалекте Happ — protocol "hysteria" со своим транспортом
     hy = [o for it in items for o in it["outbounds"] if o["protocol"] == "hysteria"]
     assert hy and hy[0]["streamSettings"]["hysteriaSettings"]["auth"] == uuid
+
+
+def test_happ_auto_select_toggle(admin, sub_client):
+    """Автовыбор (балансер) исчезает из подписки, когда выключен."""
+    _, token = sub_client
+    db.set_setting("auto_select", 0)
+    try:
+        r = admin.get(f"/sub/{token}", headers={"User-Agent": "Happ/2.1.0 (iPhone; iOS 17.4)"})
+        assert r.status_code == 200
+        items = json.loads(r.text)
+        servers = db.q1("SELECT COUNT(*) AS n FROM inbounds WHERE enabled=1")["n"]
+        assert len(items) == servers            # без элемента «Автовыбор»
+        assert all("Автовыбор" not in it["remarks"] for it in items)
+    finally:
+        db.set_setting("auto_select", 1)
 
 
 def test_happ_singbox_setting_is_ignored(admin, sub_client):

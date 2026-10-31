@@ -122,6 +122,7 @@ def client_entries(client: dict) -> list[dict]:
 
 
 def build_links(client: dict) -> list[str]:
+    client = dict(client)
     res = []
     for e in client_entries(client):
         link = links.share_link(e["inbound"], e["node"], client)
@@ -139,6 +140,7 @@ def build_links_text(client: dict) -> str:
 
 
 def build_clash(client: dict, title: str) -> str:
+    client = dict(client)
     proxies, names = [], []
     for e in client_entries(client):
         p = links.clash_proxy(e["inbound"], e["node"], client)
@@ -154,16 +156,17 @@ def build_clash(client: dict, title: str) -> str:
         "proxies": proxies,
         "proxy-groups": [
             {"name": "PROXY", "type": "select", "proxies": (names + ["DIRECT"]) if names else ["DIRECT"]},
-            ({"name": "AUTO", "type": "url-test", "url": "https://www.gstatic.com/generate_204",
-              "interval": 300, "proxies": names} if names
-             else {"name": "AUTO", "type": "select", "proxies": ["DIRECT"]}),
-        ],
+        ] + (
+            [{"name": "AUTO", "type": "url-test", "url": "https://www.gstatic.com/generate_204",
+              "interval": 300, "proxies": names}] if (names and db.get_setting("auto_select", 1)) else []
+        ),
         "rules": rules + ["MATCH,PROXY"],
     }
     return f"# {title}\n" + yaml.safe_dump(doc, allow_unicode=True, sort_keys=False)
 
 
 def build_singbox(client: dict) -> str:
+    client = dict(client)
     outs, tags = [], []
     for e in client_entries(client):
         o = links.singbox_outbound(e["inbound"], e["node"], client)
@@ -223,6 +226,7 @@ def build_happ(client: dict) -> str:
     `proxy`, а первым элементом — «Автовыбор»: все серверы как `proxy-1…N`
     плюс balancer `auto` (leastLoad) и observatory для замеров.
     """
+    client = dict(client)
     title = db.get_setting("sub_title", "Hydra VPN") or "Hydra VPN"
     entries: list[dict] = []
     for e in client_entries(client):
@@ -280,12 +284,12 @@ def build_happ(client: dict) -> str:
     }
 
     # ---------------------------------------------------------- по серверу
-    items = [auto]
+    items = [auto] if db.get_setting("auto_select", 1) else []
     for ob in entries:
         item = dict(ob)
         item["tag"] = "proxy"
         items.append({
-            "remarks": f"{title} · {ob['tag']}",
+            "remarks": (client.get("name") or "").strip() or f"{title} · {ob['tag']}",
             "log": {"loglevel": "warning"},
             "dns": copy.deepcopy(HAPP_DNS),
             "inbounds": copy.deepcopy(HAPP_INBOUNDS),
@@ -312,6 +316,7 @@ def render(client: dict, fmt: str) -> tuple[str, str]:
 
 
 def userinfo_header(client: dict) -> str:
+    client = dict(client)
     used_up = client.get("up_bytes") or 0
     used_down = client.get("down_bytes") or 0
     total = client.get("limit_bytes") or 0

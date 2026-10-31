@@ -56,6 +56,12 @@
         </div>
       </div>
       <div class="form-row mt16">
+        <label class="check">
+          <input type="checkbox" name="auto_select" {{ 'checked' if s.auto_select }}>
+          <span>Автовыбор в подписке (балансер по нагрузке + замеры)</span>
+        </label>
+      </div>
+      <div class="form-row mt16">
         <div class="field">
           <label for="s-interval">Опрос нод, сек</label>
           <input class="input" id="s-interval" name="traffic_check_interval" type="number"

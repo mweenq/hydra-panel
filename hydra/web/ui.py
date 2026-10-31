@@ -256,6 +256,8 @@ def node_new(request: Request, name: str = Form(...), address: str = Form(...),
              sni: str = Form(""), with_connection: str = Form("")):
     if not _auth(request):
         return redirect("/login")
+    if with_connection == "on" and port in (443, 8000, 8443):
+        return redirect("/nodes?err=Порт " + str(port) + " занят: 443=nginx, 8000=панель, 8443=агент ноды")
     nid, token = nodes_svc.create_node(
         name.strip(), address.strip(), engine, api_port, is_local == "on", note,
         public_host=public_host.strip(),
@@ -302,6 +304,8 @@ def node_connection_new(request: Request, nid: int, protocol: str = Form("vless"
     node = nodes_svc.get_node(nid)
     if not node:
         return redirect("/nodes?err=Нет+ноды")
+    if port in (443, 8000, 8443):
+        return redirect(f"/nodes/{nid}?err=Порт {port} занят: 443=nginx, 8000=панель, 8443=агент ноды")
     _add_connection(nid, protocol, network, security_, port, sni, host, path, service_name,
                     flow, reality_dest, remark, obfs_type, obfs_password)
     nodes_svc.push_async()
@@ -715,7 +719,7 @@ async def settings_save(request: Request):
         "api_key", "wildcard_domain",
     }
     int_keys = {"traffic_check_interval", "backup_keep", "hwid_limit", "notify_days"}
-    flag_keys = {"hwid_enabled", "hwid_reset_on_pay", "notify_enabled"}
+    flag_keys = {"hwid_enabled", "hwid_reset_on_pay", "notify_enabled", "auto_select"}
     for k in text_keys:
         if k in form:
             db.set_setting(k, str(form[k]).strip())

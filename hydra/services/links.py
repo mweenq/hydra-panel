@@ -12,7 +12,24 @@ def _addr(node: dict) -> str:
     return (node.get("public_host") or node.get("address") or "").strip()
 
 
-def _name(inb: dict, node: dict) -> str:
+def _name(inb: dict, node: dict, client: dict | None = None) -> str:
+    """Имя профиля/сервера в подписке.
+
+    Приоритет — имя клиента: какое пользователь указал, такое и будет, без
+    каких-либо ограничений по символам (кириллица, эмодзи, слэши — что угодно).
+    Если имени нет — запасной вариант из remark/тега инбаунда (старое поведение).
+
+    `client` может быть и dict, и sqlite3.Row — обрабатываем оба случая.
+    """
+    name = ""
+    if client is not None:
+        try:
+            name = client.get("name") or ""
+        except AttributeError:
+            name = client["name"] if "name" in client else ""
+        name = name.strip()
+    if name:
+        return name
     remark = inb.get("remark") or inb.get("tag") or "Hydra"
     node_name = node.get("name") or ""
     return f"{remark} · {node_name}" if node_name and node_name not in remark else remark
@@ -64,7 +81,7 @@ def share_link(inb: dict, node: dict, client: dict) -> str:
     host = _addr(node)
     port = int(inb.get("port") or 443)
     net = _net(inb)
-    name = _name(inb, node)
+    name = _name(inb, node, client)
 
     if proto == "vless":
         p: dict[str, str] = {
@@ -129,7 +146,7 @@ def clash_proxy(inb: dict, node: dict, client: dict) -> dict[str, Any]:
     net = _net(inb)
     sec = _security(inb)
     proxy: dict[str, Any] = {
-        "name": _name(inb, node),
+        "name": _name(inb, node, client),
         "type": "vless" if proto == "vless" else ("trojan" if proto == "trojan" else "hysteria2"),
         "server": _addr(node),
         "port": int(inb.get("port") or 443),
@@ -197,7 +214,7 @@ def singbox_outbound(inb: dict, node: dict, client: dict) -> dict[str, Any]:
     sni = inb.get("sni") or _addr(node)
     out: dict[str, Any] = {
         "type": "vless" if proto == "vless" else ("trojan" if proto == "trojan" else "hysteria2"),
-        "tag": _name(inb, node),
+        "tag": _name(inb, node, client),
         "server": _addr(node),
         "server_port": int(inb.get("port") or 443),
     }
@@ -288,7 +305,7 @@ def xray_outbound(inb: dict, node: dict, client: dict) -> dict[str, Any] | None:
         settings = {"servers": [{"address": host, "port": port, "password": client["uuid"]}]}
 
     return {
-        "tag": _name(inb, node),
+        "tag": _name(inb, node, client),
         "protocol": proto,
         "settings": settings,
         "streamSettings": stream,
@@ -306,7 +323,7 @@ def happ_outbound(inb: dict, node: dict, client: dict) -> dict[str, Any] | None:
     if proto not in ("hysteria2", "hy2"):
         return xray_outbound(inb, node, client)
     return {
-        "tag": _name(inb, node),
+        "tag": _name(inb, node, client),
         "protocol": "hysteria",
         "settings": {
             "version": 2,

@@ -97,6 +97,7 @@ DEFAULT_SETTINGS: dict[str, object] = {
     # напоминания об окончании подписки
     "notify_enabled": 1,
     "notify_days": 3,
+    "auto_select": 1,                 # Автовыбор (балансер+observatory) в подписке Happ/Clash
     "acme_email": "",
     "tls_mode": "acme",  # acme | selfsigned
     "api_key": "",
