@@ -381,16 +381,21 @@ else
     curl -fsSL https://get.acme.sh | sh -s email="$EMAIL" >/dev/null 2>&1 || die "acme.sh не установился"
   fi
   systemctl stop nginx >/dev/null 2>&1 || true
-  /root/.acme.sh/acme.sh --issue -d "$DOMAIN" --standalone --keylength ec-256 >/tmp/acme.log 2>&1 || {
-    warn "Выпуск не удался, смотрите /tmp/acme.log"
-    warn "Ставлю самоподписанный — панель поднимется, сертификат замените позже"
-    openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
-      -keyout "$HYDRA_DIR/certs/privkey.pem" -out "$HYDRA_DIR/certs/fullchain.pem" \
-      -subj "/CN=$DOMAIN" >/dev/null 2>&1
-    TLS_MODE="selfsigned"
-  }
+  if ! /root/.acme.sh/acme.sh --issue -d "$DOMAIN" --standalone --keylength ec-256 >/tmp/acme.log 2>&1; then
+    # acme.sh возвращает ошибку и тогда, когда сертификат уже выпущен («Skipping»)
+    if /root/.acme.sh/acme.sh --list 2>/dev/null | awk 'NR>1 {print $1}' | grep -qx "$DOMAIN"; then
+      info "Сертификат уже есть — обновляю файлы, повторный выпуск не нужен"
+    else
+      warn "Выпуск не удался, смотрите /tmp/acme.log"
+      warn "Ставлю самоподписанный — панель поднимется, сертификат замените позже"
+      openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
+        -keyout "$HYDRA_DIR/certs/privkey.pem" -out "$HYDRA_DIR/certs/fullchain.pem" \
+        -subj "/CN=$DOMAIN" >/dev/null 2>&1
+      TLS_MODE="selfsigned"
+    fi
+  fi
   if [ "${TLS_MODE:-}" != "selfsigned" ]; then
-    /root/.acme.sh/acme.sh --install-cert -d "$DOMAIN" \
+    /root/.acme.sh/acme.sh --install-cert -d "$DOMAIN" --ecc \
       --key-file "$HYDRA_DIR/certs/privkey.pem" \
       --fullchain-file "$HYDRA_DIR/certs/fullchain.pem" \
       --reloadcmd "$CERT_FIX" >/dev/null 2>&1
@@ -493,7 +498,8 @@ systemctl restart nginx
 ok "Nginx поднят, заглушка на 127.0.0.1:8080"
 
 # настройки в базе
-as_hydra env HYDRA_HOME="$HYDRA_DIR" "$VENV/bin/python" - "$PANEL_URL" "$EMAIL" "$TLS_MODE" <<'PY'
+as_hydra env HYDRA_HOME="$HYDRA_DIR" PYTHONPATH="$APP_DIR" "$VENV/bin/python" - \
+  "$PANEL_URL" "$EMAIL" "$TLS_MODE" <<'PY'
 import sys
 from hydra import db
 from hydra.services import certs
@@ -508,7 +514,7 @@ PY
 # ------------------------------------------------------------------ 7. нода
 step "Нода на этом сервере"
 if [ "$WITH_NODE" = "1" ] && confirm "Поставить ноду здесь же? (VLESS/REALITY/Hysteria2 на этом IP)" "y"; then
-  TOKENS=$(as_hydra env HYDRA_HOME="$HYDRA_DIR" "$VENV/bin/python" - "$DOMAIN" <<'PY'
+  TOKENS=$(as_hydra env HYDRA_HOME="$HYDRA_DIR" PYTHONPATH="$APP_DIR" "$VENV/bin/python" - "$DOMAIN" <<'PY'
 import sys
 from hydra import db
 from hydra.services import nodes

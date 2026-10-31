@@ -124,6 +124,24 @@ curl -fsSL https://raw.githubusercontent.com/mweenq/hydra-panel/refs/heads/main/
 кладётся в `conf.d` вместо `sites-available`; при переустановке поверх существующей базы
 пароль приводится к тому, что напечатал установщик.
 
+## Удаление
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mweenq/hydra-panel/refs/heads/main/uninstall.sh | sudo bash
+```
+
+Без флагов снимает службы (`hydra`, `hydra-node`, `hydra-xray`, `hydra-hysteria`,
+`hydra-singbox`, таймер бэкапа), юниты, конфиг nginx и заглушку, снимает сертификат
+с автопродления в acme.sh — **данные остаются** в `/opt/hydra`.
+
+Полное удаление вместе с базой, сертификатами и бэкапами:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mweenq/hydra-panel/refs/heads/main/uninstall.sh | sudo bash -s -- --purge
+```
+
+Из клона — `sudo bash uninstall.sh [--purge] [--yes]`.
+
 ## Установка ноды
 
 В панели: **Ноды → Добавить ноду**. Панель выдаёт одноразовую команду:
