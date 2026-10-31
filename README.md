@@ -85,8 +85,14 @@ Happ, v2RayTun и Streisand показывают остаток трафика �
 ## Установка панели
 
 ```bash
+git clone https://github.com/mweenq/hydra-panel.git
+cd hydra-panel
 sudo bash install.sh
 ```
+
+Установщик копирует код из своего каталога, поэтому запускать его нужно файлом
+из клона (`curl … | bash` не поддерживается). Дальше — вопросы про домен/IP,
+e-mail и пароль админа.
 
 Установщик спрашивает: домен или IP, e-mail для Let's Encrypt, пароль админа и нужно ли
 поставить ноду на этот же сервер. Дальше сам ставит Python/nginx/acme.sh, выпускает
