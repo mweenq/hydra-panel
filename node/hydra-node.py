@@ -24,7 +24,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "0.9.0"
+VERSION = "1.0.1"
 ROOT = Path(os.environ.get("HYDRA_NODE_HOME", "/opt/hydra-node"))
 CERTS = ROOT / "certs"
 AGENT = ROOT / "agent"

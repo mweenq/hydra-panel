@@ -359,6 +359,11 @@ fi
 
 # пароль больше не нужен в юните
 sed -i '/HYDRA_ADMIN_PASSWORD/d' /etc/systemd/system/hydra.service
+# пароль сохраняем сразу: если установка упадёт дальше, он не потеряется
+mkdir -p "$HYDRA_DIR/data"
+printf '%s' "$ADMIN_PASS" > "$HYDRA_DIR/data/initial_password.txt"
+chown hydra:hydra "$HYDRA_DIR/data/initial_password.txt" 2>/dev/null || true
+chmod 600 "$HYDRA_DIR/data/initial_password.txt" 2>/dev/null || true
 systemctl daemon-reload
 
 # ------------------------------------------------------------------ 5. TLS
